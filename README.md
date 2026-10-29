@@ -7,6 +7,10 @@
 </p>
 
 <p align="center">
+  <a href="https://sandercokart.github.io/vacation-cafe-simulator-order-planner/"><b>Open the planner in your browser →</b></a>
+</p>
+
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/pickup-dark.png">
     <img alt="The planner on a drinks wave: four tables of orders on the left, and a Pickup card that lists spares to grab from the counter and a new Prosecco bottle from the wine rack" src="docs/screenshots/pickup.png" width="900">
@@ -70,7 +74,9 @@ A busy service in Vacation Cafe Simulator means juggling a dozen dishes across s
 
 ## Getting started
 
-You need [Node.js](https://nodejs.org) 22 or newer and [pnpm](https://pnpm.io).
+The planner runs in your browser at **https://sandercokart.github.io/vacation-cafe-simulator-order-planner/**. Nothing to install, and your progress is saved locally.
+
+To run it yourself, you need [Node.js](https://nodejs.org) 22 or newer and [pnpm](https://pnpm.io).
 
 ```bash
 pnpm install
@@ -132,6 +138,8 @@ Recipes that aren't unlocked or confirmed yet are listed in [docs/TODO.md](docs/
 | `pnpm test` | Run the planner tests (Vitest) |
 | `pnpm lint` | Lint with ESLint |
 | `pnpm screenshots` | Regenerate the README screenshots with headless Chromium |
+
+Every push to `main` is tested, built and deployed to GitHub Pages by [.github/workflows/deploy.yml](.github/workflows/deploy.yml).
 
 The screenshot script builds the app, loads a demo café with four tables, and captures every screen in light and dark, plus a 1280×640 `social-preview.png` for GitHub. Before the first run, install the browser with `pnpm exec playwright install chromium`.
 
