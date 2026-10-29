@@ -160,6 +160,29 @@ describe("deliveredOrderIds", () => {
 })
 
 describe("roundLeftovers", () => {
+  it("keeps the second trofie serving after one Trofie al Pesto", () => {
+    const orders = [order("a", { trofiePesto: 1 })]
+    const [wave] = waves({ orders })
+    const done = Object.fromEntries(
+      wave.plan.tasks.map((task) => [task.process.id, task.runs])
+    )
+    const collected = Object.fromEntries(
+      wave.plan.gather.map((line) => [line.item, line.need])
+    )
+    const started: StartedWave[] = [
+      {
+        id: "w1",
+        kind: "food",
+        dishes: wave.dishes,
+        done,
+        collected,
+        served: true,
+      },
+    ]
+    const result = waves({ orders, started })
+    expect(roundLeftovers(result, started, {})).toEqual({ cookedTrofie: [1] })
+  })
+
   it("keeps leftovers only from work that was done", () => {
     const orders = [order("a", { espresso: 3 })]
     const started: StartedWave[] = [
@@ -172,7 +195,7 @@ describe("roundLeftovers", () => {
       },
     ]
     const result = waves({ orders, started })
-    expect(roundLeftovers(result, started, {})).toEqual({ groundCoffee: 3 })
+    expect(roundLeftovers(result, started, {})).toEqual({ groundCoffee: [3] })
   })
 })
 

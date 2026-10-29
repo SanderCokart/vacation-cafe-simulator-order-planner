@@ -4,8 +4,15 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  Archive,
+  HandPlatter,
+  Package,
+  ShoppingBasket,
+  UtensilsCrossed,
+  Wine,
+  type LucideIcon,
 } from "lucide-react"
-import { Fragment, useState } from "react"
+import { useState } from "react"
 import { cn } from "cn"
 
 import { DrinksStrip } from "@/components/drinks-strip"
@@ -13,12 +20,24 @@ import { PHASE_ICONS, PHASE_TINTS } from "@/components/phase"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ITEMS, usesOf, type ItemId } from "@/data/items"
+import {
+  byPickupOrder,
+  ITEMS,
+  usesOf,
+  type Item,
+  type ItemId,
+} from "@/data/items"
+import { isContainer } from "@/lib/stock"
 import { RECIPE_BY_ID } from "@/data/recipes"
 import { PHASE_LABELS, PHASES, type Phase, type Station } from "@/data/stations"
 import { useWaves } from "@/hooks/use-waves"
 import { INVENTORY_SLOTS } from "@/lib/slots"
-import type { PlanMode, Wave, WaveDish } from "@/lib/waves"
+import {
+  SPARES_PICKUP,
+  type PlanMode,
+  type Wave,
+  type WaveDish,
+} from "@/lib/waves"
 import { orderName, usePlanner, type Order, type WavePatch } from "@/store"
 
 interface CardLine {
@@ -85,38 +104,69 @@ function buildCards(wave: Wave, orders: Order[]): FocusCard[] {
   const { plan } = wave
   const cards: FocusCard[] = []
 
-  if (plan.gather.length) {
+  const spareLines: CardLine[] = (
+    Object.entries(wave.fromSpares) as [ItemId, number[]][]
+  )
+    .sort(([a], [b]) => byPickupOrder(a, b))
+    .flatMap(([item, amounts]) =>
+      isContainer(item)
+        ? amounts.map((amount, index) => ({
+            key: `spare:${item}:${index}`,
+            section: "From the counter (spares)",
+            qty: 1,
+            name: `${ITEMS[item].name} ${amount}/${usesOf(item)}`,
+          }))
+        : [
+            {
+              key: `spare:${item}`,
+              section: "From the counter (spares)",
+              qty: amounts.reduce((sum, amount) => sum + amount, 0),
+              name: ITEMS[item].name,
+            },
+          ]
+    )
+  const sparesDone = !spareLines.length || wave.sparesPickedUp
+  if (plan.gather.length || spareLines.length) {
+    const gatherDone = plan.gatherComplete && sparesDone
     cards.push({
       id: "gather",
       phase: "gather",
-      title: "Pantry pickup",
-      lines: openLines(
-        plan.gather.map((line) => {
-          const uses = usesOf(line.item)
-          const details = [
-            uses > 1 && `${uses} uses each`,
-            line.spare > 0 && uses > 1 && `${line.spare} spare`,
-          ].filter(Boolean)
-          return {
-            key: line.item,
-            qty: plan.gatherComplete ? line.need : line.remaining,
-            name: ITEMS[line.item].name,
-            detail: details.join(" · ") || undefined,
-            done: line.collected,
-          }
-        })
-      ),
-      complete: plan.gatherComplete,
+      title: "Pickup",
+      lines: [
+        ...(gatherDone || !wave.sparesPickedUp ? spareLines : []),
+        ...openLines(
+          plan.gather.map((line) => {
+            const uses = usesOf(line.item)
+            const details = [
+              (ITEMS[line.item] as Item).from &&
+                `From the ${(ITEMS[line.item] as Item).from}`,
+              uses > 1 && `${uses} uses each`,
+              line.spare > 0 && uses > 1 && `${line.spare} spare`,
+            ].filter(Boolean)
+            return {
+              key: line.item,
+              section: spareLines.length ? "New from the pantry" : undefined,
+              qty: plan.gatherComplete ? line.need : line.remaining,
+              name: ITEMS[line.item].name,
+              detail: details.join(" · ") || undefined,
+              done: line.collected,
+            }
+          })
+        ),
+      ],
+      complete: gatherDone,
       doneLabel: "Collected",
       donePatch: {
         collected: Object.fromEntries(
           plan.gather.map((line) => [line.item, line.need])
         ),
+        done: spareLines.length ? { [SPARES_PICKUP]: 1 } : undefined,
       },
       reopenPatch: {
         collected: Object.fromEntries(
           plan.gather.map((line) => [line.item, 0])
         ),
+        done: spareLines.length ? { [SPARES_PICKUP]: 0 } : undefined,
       },
     })
   }
@@ -213,15 +263,18 @@ function buildCards(wave: Wave, orders: Order[]): FocusCard[] {
         name: drinks
           ? `${nameOf(group.orderId)} drinks`
           : `${nameOf(group.orderId)} together`,
-        detail:
-          [
-            group.fromCounter.length &&
-              `Pick up ${dishList(group.fromCounter)} from the counter`,
-            group.trips > 1 &&
-              `Too much to carry at once: serve in ${group.trips} trips`,
-          ]
-            .filter(Boolean)
-            .join(" · ") || undefined,
+        // Spell out what goes to the table, so nothing has to be looked up.
+        detail: [
+          group.fromCounter.length
+            ? `Just plated: ${dishList(group.dishes)}`
+            : dishList(group.dishes),
+          group.fromCounter.length &&
+            `Pick up from the counter: ${dishList(group.fromCounter)}`,
+          group.trips > 1 &&
+            `Too much to carry at once: serve in ${group.trips} trips`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
       })),
     ],
     complete: wave.served,
@@ -233,53 +286,114 @@ function buildCards(wave: Wave, orders: Order[]): FocusCard[] {
   return cards
 }
 
-function Lines({ card, large }: { card: FocusCard; large?: boolean }) {
+const SECTION_ICONS: Record<string, LucideIcon> = {
+  "From the counter (spares)": Package,
+  "New from the pantry": ShoppingBasket,
+  Plate: UtensilsCrossed,
+  "Pour and finish": Wine,
+  "Put aside on the counter": Archive,
+  "Pick up and serve": HandPlatter,
+  Serve: HandPlatter,
+}
+
+function LineRow({
+  line,
+  card,
+  large,
+}: {
+  line: CardLine
+  card: FocusCard
+  large?: boolean
+}) {
+  const detail = [
+    line.detail,
+    !card.complete && line.done && `${line.done} already done`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
   return (
-    <ul
+    <li
       className={cn(
-        "grid gap-x-6 font-sans",
-        large ? "gap-y-3" : "gap-y-1 text-sm",
-        large &&
-          card.phase === "gather" &&
-          card.lines.length > 6 &&
-          "sm:grid-cols-2"
+        "flex items-baseline gap-3",
+        large && "border-b py-2.5 last:border-b-0"
       )}
     >
-      {card.lines.map((line, index) => (
-        <Fragment key={line.key}>
-          {large &&
-            line.section &&
-            line.section !== card.lines[index - 1]?.section && (
-              <li className="pt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase first:pt-0">
-                {line.section}
-              </li>
-            )}
-          <li className="flex items-baseline gap-3">
-            <span
-              className={cn(
-                "shrink-0 text-right font-medium tabular-nums",
-                large ? "w-10 text-2xl" : "w-6"
-              )}
-            >
-              {line.qty}×
-            </span>
-            <span className="min-w-0">
-              <span className={cn(large && "text-lg")}>{line.name}</span>
-              {large && (line.detail || (!card.complete && !!line.done)) && (
-                <span className="block text-sm text-muted-foreground">
-                  {[
-                    line.detail,
-                    !card.complete && line.done && `${line.done} already done`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              )}
-            </span>
-          </li>
-        </Fragment>
-      ))}
-    </ul>
+      <span
+        className={cn(
+          "shrink-0 text-right font-medium tabular-nums",
+          large ? "w-10 text-2xl" : "w-6"
+        )}
+      >
+        {line.qty}×
+      </span>
+      <span className="min-w-0">
+        <span className={cn(large && "text-lg")}>{line.name}</span>
+        {large && detail && (
+          <span className="block text-sm whitespace-pre-line text-muted-foreground">
+            {detail}
+          </span>
+        )}
+      </span>
+    </li>
+  )
+}
+
+/**
+ * One column, read top to bottom. Sectioned cards show each section as its
+ * own numbered block, so "grab these spares" and "fetch these new" never blur.
+ */
+function Lines({ card, large }: { card: FocusCard; large?: boolean }) {
+  const groups: { section?: string; lines: CardLine[] }[] = []
+  for (const line of card.lines) {
+    const last = groups[groups.length - 1]
+    if (last && last.section === line.section) last.lines.push(line)
+    else groups.push({ section: line.section, lines: [line] })
+  }
+
+  if (!large || !groups.some((group) => group.section)) {
+    return (
+      <ul
+        className={cn(
+          "font-sans",
+          large ? "flex flex-col" : "space-y-1 text-sm"
+        )}
+      >
+        {card.lines.map((line) => (
+          <LineRow key={line.key} line={line} card={card} large={large} />
+        ))}
+      </ul>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3 font-sans">
+      {groups.map((group, index) => {
+        const Icon = group.section ? SECTION_ICONS[group.section] : undefined
+        const count = group.lines.reduce((sum, line) => sum + line.qty, 0)
+        return (
+          <section
+            key={`${group.section}-${index}`}
+            className="rounded-2xl border bg-muted/30 px-4 pt-3 pb-1"
+          >
+            <h3 className="flex items-center gap-2 text-sm font-medium">
+              <span className="flex size-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground tabular-nums">
+                {index + 1}
+              </span>
+              {Icon && <Icon className="size-4 text-muted-foreground" />}
+              {group.section}
+              <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                {count} {count === 1 ? "item" : "items"}
+              </span>
+            </h3>
+            <ul className="flex flex-col">
+              {group.lines.map((line) => (
+                <LineRow key={line.key} line={line} card={card} large />
+              ))}
+            </ul>
+          </section>
+        )
+      })}
+    </div>
   )
 }
 
@@ -416,8 +530,15 @@ export function FocusView() {
   const { waves } = useWaves()
   const orders = usePlanner((state) => state.orders)
   const [chosenWave, setChosenWave] = useState<number | null>(null)
-  const [chosenPhase, setChosenPhase] = useState<Phase | null>(null)
-  const [focusedId, setFocusedId] = useState<string | null>(null)
+  // Phase and card choices belong to one wave; moving on starts fresh.
+  const [phaseChoice, setPhaseChoice] = useState<{
+    wave: number
+    phase: Phase
+  } | null>(null)
+  const [focusChoice, setFocusChoice] = useState<{
+    wave: number
+    id: string
+  } | null>(null)
 
   const mode = usePlanner((state) => state.mode)
   const updateWave = usePlanner((state) => state.updateWave)
@@ -429,6 +550,12 @@ export function FocusView() {
     waves.findIndex((wave) => !wave.served)
   )
   const waveIndex = Math.min(chosenWave ?? firstOpenWave, waves.length - 1)
+  const chosenPhase = phaseChoice?.wave === waveIndex ? phaseChoice.phase : null
+  const focusedId = focusChoice?.wave === waveIndex ? focusChoice.id : null
+  const setChosenPhase = (phase: Phase | null) =>
+    setPhaseChoice(phase ? { wave: waveIndex, phase } : null)
+  const setFocusedId = (id: string | null) =>
+    setFocusChoice(id ? { wave: waveIndex, id } : null)
   const wave = waves[waveIndex]
   const cards = buildCards(wave, orders)
 

@@ -130,3 +130,17 @@ Facts so far:
 - **Mixer multiplier.** The mixer runs one recipe at a time at 1× to 5×, multiplying every ingredient (a croissant dough at 5× uses 36 of 36 milk). Its card shows the number of rounds, and each line says which multiplier to set, for example "Set to 5× then 2×".
 - **Log copy.** The log can also be copied to the clipboard as JSON.
 - **Drinks in table priority.** A table's drinks are put aside until all of its drinks are ready, then served together. Efficient mode still serves drinks straight away.
+
+## Pickup order (v5)
+- The pickup list follows the café's shelves, left to right: cheeses, fresh yeast, dairy, meats, vegetables and herbs, bread and flour, sauces and baking, eggs, coffee beans, artichoke, olives, cacao, the Savoiardi pack, then the wines. Anything not on the shelf list (seafood, glasses) comes last, alphabetically. Spares follow the same order.
+- Three custom wines made in your own winery: Costa Rosso, Estate Bianco and Terra Toscana. Customers order them like any other wine, and each bottle pours 5 glasses.
+
+## Spare inventory (v5)
+- **Individual spares.** Spares are individual entries: containers with charges left (Cacao 1/4, Milk 2/6, Ground coffee 5/6, Chianti 3/5) and counted stacks (3 Clean mussels). Every container takes its own inventory slot when it's carried.
+- **Wine as bottles.** Each wine and Prosecco is a bottle of 5 glasses, picked up from the wine rack (1 slot per bottle). The pickup list asks for a new bottle when the spares run out.
+- **Ground coffee as a container.** It's the can that feeds the machine, with 6 charges.
+- **Combining charges.** Partial containers can be combined, so 1/6 + 5/6 milk makes the full 6/6 a croissant needs.
+- **Emptiest first.** The pickup card names the spares to grab before any new containers are opened.
+- **Adding spares.** "Add spare" accepts any item, found with the same quick search as orders. Containers ask for the charges left; everything else asks for a count. Every spare can be edited or removed.
+- **Where spares wait.** On the counter, taking no slots until a wave picks them up.
+- **Round leftovers.** At the end of a round, leftovers become individual entries too.

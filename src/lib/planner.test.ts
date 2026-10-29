@@ -113,7 +113,7 @@ describe("plan", () => {
       "cutter",
       "grater",
       "mixer",
-      "doughTable",
+      "pastaMachine",
       "oven",
       "pizzaOven",
     ])
@@ -223,15 +223,67 @@ describe("plan", () => {
     expect(gathered(result, "arugula")).toBe(3)
   })
 
+  it("lists the pickup in pantry order, left to right", () => {
+    const result = plan(
+      input({ dishes: { tiramisu: 1, caprese: 1, chianti: 1, margherita: 1 } })
+    )
+    expect(result.gather.map((line) => line.item)).toEqual([
+      "mozzarella",
+      "freshYeast",
+      "mascarpone",
+      "tomato",
+      "basil",
+      "flour",
+      "tomatoSauce",
+      "sugar",
+      "eggs",
+      "coffeeBeans",
+      "cacao",
+      "ladyfingers",
+      "chiantiBottle",
+    ])
+  })
+
+  it("uses a full milk for the lasagna béchamel", () => {
+    const result = plan(input({ dishes: { lasagna: 1, cappuccino: 1 } }))
+    expect(result.demand.milk).toBe(7)
+    expect(gathered(result, "milk")).toBe(2)
+  })
+
+  it("toasts 2 shrimp for a Bruschetta ai Gamberi", () => {
+    const result = plan(input({ dishes: { bruschettaGamberi: 2 } }))
+    expect(task(result, "toastedShrimp")?.runs).toBe(4)
+    expect(task(result, "breadSlice")?.runs).toBe(1)
+    expect(task(result, "toastedBread")).toBeUndefined()
+    expect(gathered(result, "arugula")).toBe(4)
+    expect(gathered(result, "lemon")).toBe(2)
+  })
+
+  it("shucks 3 oysters per serving", () => {
+    const result = plan(input({ dishes: { oysters: 2 } }))
+    expect(task(result, "shuckedOyster")?.runs).toBe(2)
+    expect(gathered(result, "oyster")).toBe(6)
+    expect(gathered(result, "lemon")).toBe(2)
+  })
+
   it("never puts staples like olive oil on the gather list", () => {
     const result = plan(input({ dishes: { caprese: 2 } }))
     expect(result.demand.oliveOil).toBe(2)
     expect(gathered(result, "oliveOil")).toBeUndefined()
   })
 
-  it("gives wine no prep at all", () => {
-    const result = plan(input({ dishes: { chianti: 3 } }))
+  it("pours wine from 5-glass bottles with no prep", () => {
+    const result = plan(input({ dishes: { chianti: 7 } }))
     expect(result.tasks).toEqual([])
+    expect(result.gather).toEqual([
+      expect.objectContaining({ item: "chiantiBottle", need: 2, spare: 3 }),
+    ])
+  })
+
+  it("pours from a spare bottle before opening a new one", () => {
+    const result = plan(
+      input({ dishes: { chianti: 3 }, spares: { chiantiBottle: 3 } })
+    )
     expect(result.gather).toEqual([])
   })
 })

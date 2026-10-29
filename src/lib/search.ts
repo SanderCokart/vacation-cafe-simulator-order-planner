@@ -3,39 +3,63 @@ import { RECIPES, type Recipe } from "@/data/recipes"
 const normalize = (text: string) =>
   text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
 
-const isSubsequence = (needle: string, haystack: string) => {
+const wordsOf = (text: string) => text.split(/[^a-z0-9]+/).filter(Boolean)
+
+/** How tightly the query's letters sit in the name, from 0 to 1; 0 if they don't all appear in order. */
+function subsequenceFit(needle: string, haystack: string): number {
   let index = 0
-  for (const char of haystack) {
-    if (char === needle[index]) index++
-    if (index === needle.length) return true
+  let start = -1
+  for (let position = 0; position < haystack.length; position++) {
+    if (haystack[position] !== needle[index]) continue
+    if (start === -1) start = position
+    index++
+    if (index === needle.length) return needle.length / (position - start + 1)
   }
-  return false
+  return 0
 }
 
-/** Lower is better; null means no match. */
-function score(recipe: Recipe, query: string): number | null {
+/**
+ * Higher is better; 0 means no match. Ranked from most to least direct:
+ * the exact name, the start of the name, a whole word, the start of words,
+ * aliases, anywhere in the name, then loosely scattered letters.
+ */
+function score(recipe: Recipe, query: string): number {
   const name = normalize(recipe.name)
-  const words = name.split(/[^a-z]+/).filter(Boolean)
-  const tokens = query.split(/\s+/).filter(Boolean)
+  const words = wordsOf(name)
+  const tokens = wordsOf(query)
   const aliases = (recipe.aliases ?? []).map(normalize)
+  if (!tokens.length) return 0
 
-  if (name.startsWith(query)) return 0
-  if (tokens.every((token) => words.some((word) => word.startsWith(token))))
-    return 1
-  if (name.includes(query)) return 2
-  if (aliases.some((alias) => alias.startsWith(query))) return 3
-  if (isSubsequence(query.replace(/\s+/g, ""), name)) return 4
-  return null
+  if (name === query) return 1000
+  if (aliases.includes(query)) return 950
+  if (name.startsWith(query)) return 900
+  if (tokens.every((token) => words.includes(token))) return 850
+
+  if (tokens.every((token) => words.some((word) => word.startsWith(token)))) {
+    // Prefer names whose first word matches and where whole words match.
+    const firstWord = words[0].startsWith(tokens[0]) ? 40 : 0
+    const wholeWords = tokens.filter((token) => words.includes(token)).length
+    return 700 + firstWord + wholeWords * 10
+  }
+
+  if (aliases.some((alias) => alias.startsWith(query))) return 650
+  if (name.includes(query)) return 500
+
+  const fit = subsequenceFit(query.replace(/\s+/g, ""), name)
+  return fit ? 100 + Math.round(fit * 100) : 0
 }
 
 export function searchRecipes(query: string): Recipe[] {
   const normalized = normalize(query.trim())
   if (!normalized) return RECIPES
   return RECIPES.map((recipe) => ({ recipe, score: score(recipe, normalized) }))
-    .filter(
-      (entry): entry is { recipe: Recipe; score: number } =>
-        entry.score !== null
+    .filter((entry) => entry.score > 0)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        // Among equal matches, the shorter name is the more direct one.
+        a.recipe.name.length - b.recipe.name.length ||
+        a.recipe.name.localeCompare(b.recipe.name)
     )
-    .sort((a, b) => a.score - b.score)
     .map((entry) => entry.recipe)
 }

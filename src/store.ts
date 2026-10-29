@@ -1,7 +1,8 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
-import type { Amounts } from "@/data/items"
+import type { Amounts, ItemId } from "@/data/items"
+import { describeSpare, type Stock } from "@/lib/stock"
 import { RECIPE_BY_ID } from "@/data/recipes"
 import type { PlanMode, StartedWave, Wave } from "@/lib/waves"
 
@@ -37,7 +38,8 @@ interface State {
   nextNumber: number
   /** Waves that have started, in the order they were started. */
   waves: StartedWave[]
-  spares: Amounts
+  /** Spares on the counter, one entry per container or stack. */
+  spares: SpareEntry[]
   mode: PlanMode
   /** Counts rounds so the log can tell them apart. */
   round: number
@@ -59,7 +61,10 @@ interface Actions {
   deleteOrder: (orderId: string) => void
   /** Records progress on a wave, starting it first if needed. */
   updateWave: (wave: Wave, patch: WavePatch, notes?: string[]) => void
-  newRound: (spares: Amounts) => void
+  newRound: (spares: Stock) => void
+  addSpare: (item: ItemId, amount: number) => void
+  updateSpare: (id: string, amount: number) => void
+  removeSpare: (id: string) => void
   clearSpares: () => void
   setMode: (mode: PlanMode) => void
   clearLog: () => void
@@ -100,6 +105,31 @@ const orderNameById = (orders: Order[], orderId: string) => {
   return order ? orderName(order) : "Removed order"
 }
 
+export interface SpareEntry {
+  id: string
+  item: ItemId
+  /** Charges left for a container, otherwise a count. */
+  amount: number
+}
+
+const describeEntry = (entry: SpareEntry) =>
+  describeSpare(entry.item, entry.amount)
+
+export const entriesToStock = (entries: SpareEntry[]): Stock => {
+  const stock: Stock = {}
+  for (const entry of entries) {
+    stock[entry.item] = [...(stock[entry.item] ?? []), entry.amount]
+  }
+  return stock
+}
+
+const stockToEntries = (stock: Stock): SpareEntry[] =>
+  (Object.entries(stock) as [ItemId, number[]][]).flatMap(([item, amounts]) =>
+    amounts
+      .filter((amount) => amount > 0)
+      .map((amount) => ({ id: crypto.randomUUID(), item, amount }))
+  )
+
 const createOrder = (number: number): Order => ({
   id: crypto.randomUUID(),
   number,
@@ -110,7 +140,7 @@ export const usePlanner = create<State & Actions>()(
   persist(
     (set, get) => ({
       ...emptyRound,
-      spares: {},
+      spares: [],
       mode: "table",
       round: 1,
       log: [],
@@ -261,9 +291,9 @@ export const usePlanner = create<State & Actions>()(
           }
         }),
 
-      newRound: (spares) =>
+      newRound: (stock) =>
         set((state) => {
-          const kept = Object.keys(spares).length
+          const spares = stockToEntries(stock)
           return {
             ...emptyRound,
             spares,
@@ -271,14 +301,53 @@ export const usePlanner = create<State & Actions>()(
             ...logged(
               state,
               "round",
-              `Round ${state.round} ended${kept ? `, kept ${kept} kinds of spares` : ""}`
+              `Round ${state.round} ended${spares.length ? `, kept ${spares.map(describeEntry).join(", ")}` : ""}`
             ),
+          }
+        }),
+
+      addSpare: (item, amount) =>
+        set((state) => {
+          const entry = { id: crypto.randomUUID(), item, amount }
+          return {
+            spares: [...state.spares, entry],
+            ...logged(state, "round", `Added spare ${describeEntry(entry)}`),
+          }
+        }),
+
+      updateSpare: (id, amount) =>
+        set((state) => {
+          const entry = state.spares.find((spare) => spare.id === id)
+          if (!entry) return {}
+          const updated = { ...entry, amount }
+          return {
+            spares:
+              amount > 0
+                ? state.spares.map((spare) =>
+                    spare === entry ? updated : spare
+                  )
+                : state.spares.filter((spare) => spare !== entry),
+            ...logged(
+              state,
+              "round",
+              `Spare ${describeEntry(entry)} changed to ${describeEntry(updated)}`
+            ),
+          }
+        }),
+
+      removeSpare: (id) =>
+        set((state) => {
+          const entry = state.spares.find((spare) => spare.id === id)
+          if (!entry) return {}
+          return {
+            spares: state.spares.filter((spare) => spare !== entry),
+            ...logged(state, "round", `Removed spare ${describeEntry(entry)}`),
           }
         }),
 
       clearSpares: () =>
         set((state) => ({
-          spares: {},
+          spares: [],
           ...logged(state, "round", "Cleared spares"),
         })),
 
@@ -296,11 +365,20 @@ export const usePlanner = create<State & Actions>()(
     }),
     {
       name: "vacation-cafe-planner",
-      version: 2,
-      // Version 1 tracked progress for the whole round; waves start fresh.
+      version: 3,
       migrate: (persisted, version) => {
         const state = persisted as Partial<State>
-        if (version < 2) return { ...state, waves: [] }
+        // Version 1 tracked progress for the whole round; waves start fresh.
+        if (version < 2) state.waves = []
+        // Version 2 kept spares as totals per item; split them into entries.
+        if (version < 3) {
+          const totals = (state.spares ?? {}) as unknown as Amounts
+          state.spares = stockToEntries(
+            Object.fromEntries(
+              Object.entries(totals).map(([item, amount]) => [item, [amount]])
+            ) as Stock
+          )
+        }
         return state
       },
       partialize: ({

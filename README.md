@@ -38,7 +38,10 @@ Other scripts: `pnpm test` (Vitest), `pnpm build`, `pnpm lint`.
 - Click an order's name to give it a table number.
 - Prep and cook work is combined across all orders, one card per station.
 - Adding orders mid-round reopens only the difference.
-- Leftovers from batch yields (a ciabatta makes 2 bruschettas, 1 coffee grind makes 6 shots, 1 pot of pasta serves 2) are kept as spares when you start a new round.
+- **Spares on the counter.** In the Spares panel, the + button adds any item with quick search. Containers ask for the charges left (Cacao 1/4, Milk 2/6, Ground coffee 5/6, Chianti 3/5), and everything else asks for a count. Each spare is its own entry, which you can edit or remove, because every container takes its own slot when you carry it.
+  - The planner uses the emptiest containers first. Partial charges combine, so 1/6 + 5/6 milk makes a full 6/6. The pickup card lists exactly which spares to grab before anything new.
+  - Wine and Prosecco come in 5-glass bottles from the wine rack.
+  - Leftovers from batch yields and opened containers (a ciabatta makes 2 bruschettas, 1 coffee grind fills a 6-shot can, 1 pot of pasta serves 2) become spare entries when you start a new round.
 - Progress is saved in the browser's localStorage.
 
 ## Where things live

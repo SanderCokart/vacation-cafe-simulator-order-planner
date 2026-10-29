@@ -1,4 +1,5 @@
 import {
+  byPickupOrder,
   ITEMS,
   usesOf,
   type Amounts,
@@ -8,6 +9,7 @@ import {
 import { PROCESSES, type Process } from "@/data/processes"
 import { RECIPE_BY_ID } from "@/data/recipes"
 import { STATIONS, type Station } from "@/data/stations"
+import { nextStock, stockAmounts, type Stock } from "@/lib/stock"
 
 export interface PlanInput {
   /** Dish counts to plan for. */
@@ -158,7 +160,7 @@ export function plan({ dishes, done, collected, spares }: PlanInput): Plan {
       }
     })
     .filter((line) => line.need > 0)
-    .sort((a, b) => ITEMS[a.item].name.localeCompare(ITEMS[b.item].name))
+    .sort((a, b) => byPickupOrder(a.item, b.item))
 
   return {
     demand,
@@ -169,38 +171,51 @@ export function plan({ dishes, done, collected, spares }: PlanInput): Plan {
   }
 }
 
+/** Items whose leftovers are kept: batch outputs and multi-use containers. */
+const TRACKED = new Set<ItemId>([
+  ...PROCESSES.filter((process) => process.yield > 1).map(
+    (process) => process.output
+  ),
+  ...(Object.keys(ITEMS) as ItemId[]).filter((item) => usesOf(item) > 1),
+])
+
 /**
- * Spares left in the kitchen afterwards: batch and container leftovers plus
- * carried spares that weren't used. With `projected`, assumes every planned
- * run and pickup happens; otherwise counts only what was actually done.
+ * Spares left in the kitchen afterwards, container by container: batch and
+ * container leftovers plus spares that weren't used. With `projected`,
+ * assumes every planned run and pickup happens; otherwise counts only what
+ * was actually done.
  */
-export function leftoverSpares(input: PlanInput, projected = false): Amounts {
-  const { demand, tasks, gather } = plan(input)
-  const made = new Map<ItemId, number>()
+export function leftoverStock(
+  input: Omit<PlanInput, "spares">,
+  stock: Stock,
+  projected = false
+): Stock {
+  const { demand, tasks, gather } = plan({
+    ...input,
+    spares: stockAmounts(stock),
+  })
+  const made: Amounts = {}
   for (const task of tasks) {
     const runs = projected ? task.runs : task.done
-    made.set(task.process.output, runs * task.process.yield)
+    made[task.process.output] = runs * task.process.yield
   }
   for (const line of gather) {
-    made.set(
-      line.item,
+    made[line.item] =
       (projected ? line.need : line.collected) * usesOf(line.item)
-    )
   }
+  const keep = (amounts: Amounts) =>
+    Object.fromEntries(
+      (Object.entries(amounts) as [ItemId, number][]).filter(
+        ([item]) => TRACKED.has(item) || stock[item]
+      )
+    ) as Amounts
+  return nextStock(stock, keep(demand), keep(made))
+}
 
-  const tracked = new Set<ItemId>(Object.keys(input.spares) as ItemId[])
-  for (const process of PROCESSES) {
-    if (process.yield > 1) tracked.add(process.output)
-  }
-  for (const item of Object.keys(ITEMS) as ItemId[]) {
-    if (usesOf(item) > 1) tracked.add(item)
-  }
-
-  const leftover: Amounts = {}
-  for (const item of tracked) {
-    const left =
-      (input.spares[item] ?? 0) + (made.get(item) ?? 0) - (demand[item] ?? 0)
-    if (left > 0) leftover[item] = left
-  }
-  return leftover
+/** Like `leftoverStock`, but totalled per item. */
+export function leftoverSpares(input: PlanInput, projected = false): Amounts {
+  const stock = Object.fromEntries(
+    Object.entries(input.spares).map(([item, amount]) => [item, [amount]])
+  ) as Stock
+  return stockAmounts(leftoverStock(input, stock, projected))
 }

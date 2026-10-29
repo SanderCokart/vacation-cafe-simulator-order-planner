@@ -40,7 +40,14 @@ export interface Station {
 export const STATIONS: Station[] = [
   { id: "fish", name: "Fish station", phase: "prep" },
   { id: "seafood", name: "Seafood cleaning", phase: "prep" },
-  { id: "oyster", name: "Oyster table", phase: "prep" },
+  // Shucks 1×, 2× or 3× servings at a time.
+  {
+    id: "oyster",
+    name: "Oyster table",
+    phase: "prep",
+    batch: 3,
+    multiplier: true,
+  },
   { id: "cutter", name: "Cutter", phase: "prep" },
   { id: "grater", name: "Grater", phase: "prep" },
   // The mixer multiplies one recipe's ingredients 1× to 5×.

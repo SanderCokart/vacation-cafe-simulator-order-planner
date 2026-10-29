@@ -36,7 +36,8 @@ export const PROCESSES: Process[] = [
   // The cleaning station only takes batches of 6 (6, 12 or 18 at a time).
   p("seafood", "cleanMussels", "Mussels (batch of 6)", { mussels: 6 }, 6),
   p("seafood", "cleanClams", "Clams (batch of 6)", { clams: 6 }, 6),
-  p("oyster", "shuckedOyster", "Oyster", { oyster: 1 }),
+  // One serving is 3 shucked oysters.
+  p("oyster", "shuckedOyster", "Oyster serving (3 oysters)", { oyster: 3 }),
   // 1 ciabatta is cut into 4 pieces; a bruschetta uses 2.
   p("cutter", "breadSlice", "Ciabatta", { ciabatta: 1 }, 2),
   p("cutter", "slicedTomato", "Tomato", { tomato: 1 }),
@@ -55,7 +56,7 @@ export const PROCESSES: Process[] = [
   p("grater", "gratedParmesan", "Parmesan", { parmesan: 1 }),
   p("grater", "gratedPecorino", "Pecorino", { pecorino: 1 }),
   p("mixer", "pizzaDough", "Pizza dough", { freshYeast: 1, flour: 1 }),
-  // One pasta dough feeds the pasta machine for spaghetti, trofie or sheets.
+  // One pasta dough feeds the pasta machine for fresh pasta, trofie or sfoglie.
   p("mixer", "pastaDough", "Pasta dough", { eggs: 2, flour: 1 }),
   p("mixer", "mascarponeCream", "Mascarpone cream", {
     eggs: 1,
@@ -88,7 +89,6 @@ export const PROCESSES: Process[] = [
     cacao: 1,
     mascarpone: 1,
   }),
-  p("doughTable", "pizzaBase", "Pizza base", { pizzaDough: 1 }),
   // Rolling and cutting one croissant dough gives 3 preforms.
   p(
     "doughTable",
@@ -97,15 +97,19 @@ export const PROCESSES: Process[] = [
     { croissantDough: 1 },
     3
   ),
-  p("pastaMachine", "spaghetti", "Spaghetti", { pastaDough: 1 }),
+  p("pastaMachine", "pizzaBase", "Pizza base", { pizzaDough: 1 }),
+  p("pastaMachine", "spaghetti", "Fresh pasta", { pastaDough: 1 }),
   p("pastaMachine", "trofie", "Trofie", { pastaDough: 1 }),
   // Lasagna sheet yield is unverified (docs/TODO.md).
-  p("pastaMachine", "lasagnaSheets", "Lasagna sheets", { pastaDough: 1 }),
+  p("pastaMachine", "lasagnaSheets", "Sfoglie per lasagne", {
+    pastaDough: 1,
+  }),
   // One grind fills the machine for 6 shots.
   p("grinder", "groundCoffee", "Coffee beans", { coffeeBeans: 1 }, 6),
 
   // Cook
   p("toast", "toastedBread", "Bruschetta bread", { breadSlice: 1 }),
+  p("toast", "toastedShrimp", "Shrimp", { shrimp: 1 }),
   p("pan", "mushroomTopping", "Mushrooms and garlic", {
     slicedMushroom: 2,
     slicedGarlic: 1,
@@ -122,14 +126,15 @@ export const PROCESSES: Process[] = [
     gratedParmesan: 1,
   }),
   p("pan", "ragu", "Ragù", { mincedMeat: 1, slicedGarlic: 1, tomatoSauce: 1 }),
-  p("pan", "bechamel", "Béchamel", { milk: 1, flour: 1 }),
+  // Béchamel takes a full 6/6 milk.
+  p("pan", "bechamel", "Béchamel", { milk: 6, flour: 1 }),
   p("pan", "friedSeafood", "Seafood (insalata di mare)", {
     shrimp: 3,
     cleanMussels: 3,
     cleanClams: 3,
   }),
   // One pot holds one portion of pasta, which serves 2 dishes.
-  p("pot", "cookedSpaghetti", "Spaghetti", { spaghetti: 1 }, 2),
+  p("pot", "cookedSpaghetti", "Fresh pasta", { spaghetti: 1 }, 2),
   p("pot", "cookedTrofie", "Trofie", { trofie: 1 }, 2),
   p("oven", "bakedLasagna", "Lasagna", {
     lasagnaSheets: 1,

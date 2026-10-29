@@ -1,6 +1,7 @@
-import type { Amounts } from "@/data/items"
+import type { Amounts, ItemId } from "@/data/items"
+import { stockAmounts, take, type Stock } from "@/lib/stock"
 import { RECIPE_BY_ID } from "@/data/recipes"
-import { leftoverSpares, plan, type Plan } from "@/lib/planner"
+import { leftoverStock, plan, type Plan } from "@/lib/planner"
 import { INVENTORY_SLOTS, peakSlots } from "@/lib/slots"
 
 export interface WaveDish {
@@ -49,8 +50,12 @@ export interface Wave {
   kind: WaveKind
   dishes: WaveDish[]
   plan: Plan
-  /** Spares on hand when the wave starts. */
-  spares: Amounts
+  /** Spares on the counter when the wave starts. */
+  spares: Stock
+  /** Spares this wave picks up from the counter, emptiest container first. */
+  fromSpares: Stock
+  /** Whether those spares were marked as picked up. */
+  sparesPickedUp: boolean
   peak: number
   served: boolean
   /** A single dish that needs more than the whole inventory. */
@@ -61,9 +66,21 @@ export interface Wave {
 export interface WaveInput {
   orders: { id: string; lines: { recipeId: string; qty: number }[] }[]
   started: StartedWave[]
-  spares: Amounts
+  spares: Stock
   mode?: PlanMode
 }
+
+const pickedFrom = (stock: Stock, wavePlan: Plan): Stock => {
+  const picked: Stock = {}
+  for (const [item, entries] of Object.entries(stock) as [ItemId, number[]][]) {
+    const taken = take(entries, wavePlan.demand[item] ?? 0).picked
+    if (taken.length) picked[item] = taken
+  }
+  return picked
+}
+
+/** Progress key for "picked up the spares", stored next to process runs. */
+export const SPARES_PICKUP = "pickup:spares"
 
 const key = (orderId: string, recipeId: string) => `${orderId}\u0000${recipeId}`
 
@@ -110,13 +127,13 @@ function family(recipeId: string): string {
   return cached
 }
 
-function measure(dishes: WaveDish[], spares: Amounts, progress?: StartedWave) {
+function measure(dishes: WaveDish[], spares: Stock, progress?: StartedWave) {
   const counts = countByRecipe(dishes)
   const wavePlan = plan({
     dishes: counts,
     done: progress?.done ?? {},
     collected: progress?.collected ?? {},
-    spares,
+    spares: stockAmounts(spares),
   })
   return { counts, plan: wavePlan, peak: peakSlots(counts, wavePlan, spares) }
 }
@@ -264,14 +281,17 @@ export function planWaves({
       dishes,
       plan: wavePlan,
       spares: carried,
+      fromSpares: pickedFrom(carried, wavePlan),
+      sparesPickedUp: (progress?.done[SPARES_PICKUP] ?? 0) > 0,
       peak,
       served: progress?.served ?? false,
       overfull,
       service: served.service,
     })
     state = served.next
-    carried = leftoverSpares(
-      { dishes: counts, done: {}, collected: {}, spares: carried },
+    carried = leftoverStock(
+      { dishes: counts, done: {}, collected: {} },
+      carried,
       true
     )
   }
@@ -377,18 +397,20 @@ export function planWaves({
 export function roundLeftovers(
   waves: Wave[],
   started: StartedWave[],
-  spares: Amounts
-) {
+  spares: Stock
+): Stock {
   let carried = spares
   for (const wave of waves) {
     const progress = started.find((entry) => entry.id === wave.id)
     if (!progress) continue
-    carried = leftoverSpares({
-      dishes: countByRecipe(wave.dishes),
-      done: progress.done,
-      collected: progress.collected,
-      spares: carried,
-    })
+    carried = leftoverStock(
+      {
+        dishes: countByRecipe(wave.dishes),
+        done: progress.done,
+        collected: progress.collected,
+      },
+      carried
+    )
   }
   return carried
 }

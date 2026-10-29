@@ -2,11 +2,12 @@ import { slotsFor, usesOf, type Amounts, type ItemId } from "@/data/items"
 import { RECIPE_BY_ID, vesselFor, type Vessel } from "@/data/recipes"
 import { STATIONS } from "@/data/stations"
 import type { Plan } from "@/lib/planner"
+import { isContainer, take as takeFromStock, type Stock } from "@/lib/stock"
 
 /** The game's inventory size. It's fixed and bound to the number keys. */
 export const INVENTORY_SLOTS = 10
 
-const slotsOf = (inventory: Amounts) =>
+const baseSlots = (inventory: Amounts) =>
   (Object.entries(inventory) as [ItemId, number][]).reduce(
     (sum, [item, amount]) => sum + slotsFor(item, amount),
     0
@@ -32,17 +33,28 @@ const put = (inventory: Amounts, item: ItemId, amount: number) => {
 export function peakSlots(
   dishes: Record<string, number>,
   wavePlan: Plan,
-  spares: Amounts
+  stock: Stock
 ): number {
   const inventory: Amounts = {}
   for (const line of wavePlan.gather) {
     put(inventory, line.item, line.need * usesOf(line.item))
   }
-  // Spares on the counter get picked up when the wave uses them.
-  for (const [item, amount] of Object.entries(spares) as [ItemId, number][]) {
-    const used = Math.min(amount, wavePlan.demand[item] ?? 0)
-    if (used > 0) put(inventory, item, used)
+  // Spares on the counter get picked up when the wave uses them. Partial
+  // containers can't be poured together, so each one keeps its own slot.
+  let separateContainers = 0
+  for (const [item, entries] of Object.entries(stock) as [ItemId, number[]][]) {
+    const { picked } = takeFromStock(entries, wavePlan.demand[item] ?? 0)
+    const pickedAmount = picked.reduce((sum, amount) => sum + amount, 0)
+    if (!pickedAmount) continue
+    if (isContainer(item)) {
+      const opened =
+        wavePlan.gather.find((line) => line.item === item)?.need ?? 0
+      const merged = slotsFor(item, (inventory[item] ?? 0) + pickedAmount)
+      separateContainers += Math.max(0, picked.length + opened - merged)
+    }
+    put(inventory, item, pickedAmount)
   }
+  const slotsOf = (amounts: Amounts) => baseSlots(amounts) + separateContainers
 
   let peak = slotsOf(inventory)
   const usesCups = wavePlan.tasks.some(

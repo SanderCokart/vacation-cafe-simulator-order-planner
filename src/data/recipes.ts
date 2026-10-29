@@ -45,6 +45,21 @@ export const RECIPES: Recipe[] = [
     aliases: ["tomato bruschetta"],
   },
   {
+    id: "bruschettaGamberi",
+    name: "Bruschetta ai Gamberi",
+    category: "Bruschetta",
+    // The shrimp is toasted; the bread is only sliced (unconfirmed).
+    plate: {
+      breadSlice: 1,
+      toastedShrimp: 2,
+      arugula: 2,
+      cutLemon: 1,
+      oliveOil: 1,
+    },
+    serve: "Bread, arugula, 2 toasted shrimp and lemon, then olive oil",
+    aliases: ["shrimp bruschetta", "gamberi"],
+  },
+  {
     id: "bruschettaFunghi",
     name: "Bruschetta ai Funghi",
     category: "Bruschetta",
@@ -116,14 +131,14 @@ export const RECIPES: Recipe[] = [
       gratedPecorino: 1,
       eggs: 1,
     },
-    serve: "Toss spaghetti with guanciale, egg and pecorino",
+    serve: "Toss the pasta with guanciale, egg and pecorino",
   },
   {
     id: "amatriciana",
     name: "Pasta all'Amatriciana",
     category: "Pasta",
     plate: { cookedSpaghetti: 1, amatricianaSauce: 1, gratedPecorino: 1 },
-    serve: "Toss spaghetti with the sauce, pecorino on top",
+    serve: "Toss the pasta with the sauce, pecorino on top",
   },
   {
     id: "creamyShrimpPasta",
@@ -152,7 +167,7 @@ export const RECIPES: Recipe[] = [
     name: "Oysters with Lemon",
     category: "Seafood",
     plate: { shuckedOyster: 1, cutLemon: 1 },
-    serve: "Oyster on the plate with a lemon wedge",
+    serve: "3 oysters on the plate with lemon wedges",
   },
   {
     id: "seaBass",
@@ -324,18 +339,23 @@ export const RECIPES: Recipe[] = [
   },
   ...(
     [
-      ["vermentino", "Vermentino"],
-      ["pinotGrigio", "Pinot Grigio"],
-      ["barbera", "Barbera"],
-      ["chianti", "Chianti"],
-      ["houseWine", "House Wine"],
-      ["prosecco", "Prosecco"],
+      ["vermentino", "Vermentino", "vermentinoBottle"],
+      ["pinotGrigio", "Pinot Grigio", "pinotGrigioBottle"],
+      ["barbera", "Barbera", "barberaBottle"],
+      ["chianti", "Chianti", "chiantiBottle"],
+      ["houseWine", "House Wine", "houseWineBottle"],
+      // Custom wines made in your own winery.
+      ["costaRosso", "Costa Rosso", "costaRossoBottle"],
+      ["estateBianco", "Estate Bianco", "estateBiancoBottle"],
+      ["terraToscana", "Terra Toscana", "terraToscanaBottle"],
+      ["prosecco", "Prosecco", "proseccoBottle"],
     ] as const
-  ).map(([id, name]): Recipe => ({
+  ).map(([id, name, bottle]): Recipe => ({
     id,
     name,
     category: "Wine",
-    plate: {},
+    // One glass is one of the bottle's 5 charges.
+    plate: { [bottle]: 1 },
     serve: "Pour a glass at the counter",
     aliases: ["wine"],
   })),

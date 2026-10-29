@@ -1,7 +1,7 @@
 import { useMemo } from "react"
 
 import { deliveredOrderIds, planWaves, roundLeftovers } from "@/lib/waves"
-import { usePlanner } from "@/store"
+import { entriesToStock, usePlanner } from "@/store"
 
 export function useWaves() {
   const orders = usePlanner((state) => state.orders)
@@ -9,13 +9,14 @@ export function useWaves() {
   const spares = usePlanner((state) => state.spares)
   const mode = usePlanner((state) => state.mode)
   return useMemo(() => {
-    const waves = planWaves({ orders, started, spares, mode })
+    const stock = entriesToStock(spares)
+    const waves = planWaves({ orders, started, spares: stock, mode })
     const delivered = deliveredOrderIds(orders, waves)
     return {
       waves,
       delivered,
       activeOrders: orders.filter((order) => !delivered.has(order.id)),
-      leftovers: () => roundLeftovers(waves, started, spares),
+      leftovers: () => roundLeftovers(waves, started, stock),
     }
   }, [orders, started, spares, mode])
 }

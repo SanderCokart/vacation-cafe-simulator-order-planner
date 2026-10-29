@@ -6,6 +6,8 @@ export interface Item {
   stack?: number
   /** Uses per container, e.g. one milk carton pours 6 times. Defaults to 1. */
   uses?: number
+  /** Where it's picked up, when that's not the pantry. */
+  from?: string
 }
 
 export const DEFAULT_STACK = 10
@@ -29,7 +31,7 @@ export const ITEMS = {
   gorgonzola: { name: "Gorgonzola" },
   parmesan: { name: "Parmesan" },
   pecorino: { name: "Pecorino" },
-  mushroom: { name: "Mushroom" },
+  mushroom: { name: "Field mushroom" },
   garlic: { name: "Garlic" },
   guanciale: { name: "Guanciale" },
   ham: { name: "Ham" },
@@ -52,9 +54,9 @@ export const ITEMS = {
   sugar: { name: "Sugar" },
   gelatin: { name: "Gelatin" },
   cacao: { name: "Cacao", uses: 4, stack: 1 },
-  glass: { name: "Empty glass" },
+  glass: { name: "Empty glass", from: "cupboard" },
   mascarpone: { name: "Mascarpone" },
-  ladyfingers: { name: "Ladyfingers" },
+  ladyfingers: { name: "Savoiardi pack" },
   mincedMeat: { name: "Minced meat" },
   shrimp: { name: "Shrimp" },
   mussels: { name: "Mussels" },
@@ -65,6 +67,61 @@ export const ITEMS = {
   beef: { name: "Beef" },
   berrySauce: { name: "Berry sauce" },
   coffeeBeans: { name: "Coffee beans" },
+  // Wine bottles come from the rack and pour 5 glasses each.
+  vermentinoBottle: {
+    name: "Vermentino bottle",
+    uses: 5,
+    stack: 1,
+    from: "wine rack",
+  },
+  pinotGrigioBottle: {
+    name: "Pinot Grigio bottle",
+    uses: 5,
+    stack: 1,
+    from: "wine rack",
+  },
+  barberaBottle: {
+    name: "Barbera bottle",
+    uses: 5,
+    stack: 1,
+    from: "wine rack",
+  },
+  chiantiBottle: {
+    name: "Chianti bottle",
+    uses: 5,
+    stack: 1,
+    from: "wine rack",
+  },
+  houseWineBottle: {
+    name: "House wine bottle",
+    uses: 5,
+    stack: 1,
+    from: "wine rack",
+  },
+  costaRossoBottle: {
+    name: "Costa Rosso bottle",
+    uses: 5,
+    stack: 1,
+    from: "wine rack",
+  },
+  estateBiancoBottle: {
+    name: "Estate Bianco bottle",
+    uses: 5,
+    stack: 1,
+    from: "wine rack",
+  },
+  terraToscanaBottle: {
+    name: "Terra Toscana bottle",
+    uses: 5,
+    stack: 1,
+    from: "wine rack",
+  },
+  proseccoBottle: {
+    name: "Prosecco bottle",
+    uses: 5,
+    stack: 1,
+    from: "wine rack",
+  },
 
   // Prepped
   breadSlice: { name: "Bruschetta bread" },
@@ -87,15 +144,16 @@ export const ITEMS = {
   cleanSeaBream: { name: "Descaled sea bream" },
   cleanMussels: { name: "Clean mussels" },
   cleanClams: { name: "Clean clams" },
-  shuckedOyster: { name: "Shucked oyster" },
+  shuckedOyster: { name: "Oyster serving (3 shucked)" },
   pizzaDough: { name: "Pizza dough" },
   pizzaBase: { name: "Pizza base" },
   croissantDough: { name: "Croissant dough" },
   rawCroissant: { name: "Croissant preform" },
   chocolateFilling: { name: "Chocolate filling" },
-  spaghetti: { name: "Fresh spaghetti" },
+  // The game calls it fresh pasta; the id stays for saved progress.
+  spaghetti: { name: "Fresh pasta" },
   pastaDough: { name: "Pasta dough" },
-  lasagnaSheets: { name: "Lasagna sheets" },
+  lasagnaSheets: { name: "Sfoglie per lasagne" },
   trofie: { name: "Fresh trofie" },
   mascarponeCream: { name: "Mascarpone cream" },
   // The preform is already in its glass, so it takes a whole slot.
@@ -104,10 +162,12 @@ export const ITEMS = {
     name: "Chocolate panna cotta preform",
     stack: 1,
   },
-  groundCoffee: { name: "Ground coffee" },
+  // The can that feeds the coffee machine.
+  groundCoffee: { name: "Ground coffee", uses: 6, stack: 1 },
 
   // Cooked
   toastedBread: { name: "Toasted bread" },
+  toastedShrimp: { name: "Toasted shrimp" },
   mushroomTopping: { name: "Fried mushrooms and garlic" },
   friedGuanciale: { name: "Fried guanciale" },
   amatricianaSauce: { name: "Amatriciana sauce" },
@@ -115,7 +175,7 @@ export const ITEMS = {
   ragu: { name: "Ragù" },
   bechamel: { name: "Béchamel" },
   friedSeafood: { name: "Fried seafood" },
-  cookedSpaghetti: { name: "Cooked spaghetti" },
+  cookedSpaghetti: { name: "Boiled pasta" },
   cookedTrofie: { name: "Cooked trofie" },
   bakedLasagna: { name: "Baked lasagna" },
   bakedSeaBass: { name: "Baked sea bass" },
@@ -136,3 +196,60 @@ export const ITEMS = {
 export type ItemId = keyof typeof ITEMS
 
 export type Amounts = Partial<Record<ItemId, number>>
+
+/**
+ * Pickup order in the café, left to right, so the pickup list can be walked
+ * in one pass. Items not listed here come after, alphabetically.
+ */
+export const PICKUP_ORDER: ItemId[] = [
+  "parmesan",
+  "pecorino",
+  "gorgonzola",
+  "mozzarella",
+  "freshYeast",
+  "cream",
+  "milk",
+  "mascarpone",
+  "spicySalami",
+  "guanciale",
+  "ham",
+  "beef",
+  "mincedMeat",
+  "tomato",
+  "basil",
+  "lemon",
+  "mushroom",
+  "garlic",
+  "parsley",
+  "thyme",
+  "arugula",
+  "ciabatta",
+  "flour",
+  "tomatoSauce",
+  "pestoSauce",
+  "sugar",
+  "gelatin",
+  "berrySauce",
+  "eggs",
+  "coffeeBeans",
+  "artichoke",
+  "blackOlives",
+  "cacao",
+  "ladyfingers",
+  "proseccoBottle",
+  "chiantiBottle",
+  "pinotGrigioBottle",
+  "barberaBottle",
+  "vermentinoBottle",
+  "houseWineBottle",
+  "costaRossoBottle",
+  "estateBiancoBottle",
+  "terraToscanaBottle",
+]
+
+const pickupRank = new Map(PICKUP_ORDER.map((item, index) => [item, index]))
+
+/** Sorts items into pickup order, then alphabetically. */
+export const byPickupOrder = (a: ItemId, b: ItemId) =>
+  (pickupRank.get(a) ?? Infinity) - (pickupRank.get(b) ?? Infinity) ||
+  ITEMS[a].name.localeCompare(ITEMS[b].name)

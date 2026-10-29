@@ -1,8 +1,9 @@
-import { ChevronRight, Package, Plus, RotateCcw, Trash2, X } from "lucide-react"
+import { ChevronRight, Plus, RotateCcw, Trash2, X } from "lucide-react"
 import { useState } from "react"
 import { cn } from "cn"
 
 import { ConfirmButton } from "@/components/confirm-button"
+import { SparesPanel } from "@/components/spares-panel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,7 +11,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { ITEMS, type ItemId } from "@/data/items"
 import { RECIPE_BY_ID } from "@/data/recipes"
 import { useWaves } from "@/hooks/use-waves"
 import { orderName, usePlanner, type Order } from "@/store"
@@ -146,34 +146,6 @@ function DeliveredOrder({ order }: { order: Order }) {
   )
 }
 
-function Spares() {
-  const spares = usePlanner((state) => state.spares)
-  const clearSpares = usePlanner((state) => state.clearSpares)
-  const entries = Object.entries(spares) as [ItemId, number][]
-  if (!entries.length) return null
-  return (
-    <section className="rounded-xl border border-dashed p-3">
-      <div className="mb-1.5 flex items-center gap-2">
-        <Package className="size-4 text-muted-foreground" />
-        <h2 className="text-sm font-medium">Spares in the kitchen</h2>
-      </div>
-      <ul className="mb-2 font-sans text-sm">
-        {entries.map(([item, amount]) => (
-          <li key={item} className="flex gap-2">
-            <span className="w-6 text-muted-foreground tabular-nums">
-              {amount}×
-            </span>
-            {ITEMS[item].name}
-          </li>
-        ))}
-      </ul>
-      <Button variant="outline" size="xs" onClick={clearSpares}>
-        Clear spares
-      </Button>
-    </section>
-  )
-}
-
 export function OrderRail() {
   const orders = usePlanner((state) => state.orders)
   const currentOrderId = usePlanner((state) => state.currentOrderId)
@@ -230,7 +202,7 @@ export function OrderRail() {
         </Collapsible>
       )}
 
-      <Spares />
+      <SparesPanel />
 
       <div className="mt-auto pt-2">
         <ConfirmButton
