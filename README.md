@@ -29,6 +29,10 @@ Other scripts: `pnpm test` (Vitest), `pnpm build`, `pnpm lint`.
   - 1 slot is kept free for the basic cutting table.
   - Dishes that share a batch (pasta pots, ciabatta, coffee grinds, seafood) stay together, and leftovers carry over to the next wave.
   - Once a wave has started, it never changes.
+- **Table priority (default) or Efficient.** Use the toggle next to the wave stepper:
+  - **Drinks first.** The first waves make drinks for every table and serve them straight away. A strip above the wave shows the drinks still needed per table.
+  - **Table priority** finishes tables in order and fills any spare room with the next table's dishes. **Efficient** packs food for the fewest waves.
+  - **Whole tables at once.** In both modes, food for a table that isn't complete goes aside on the counter. The wave that completes the table tells you to pick it back up and serve the table together.
 - Click an order's name to give it a table number.
 - Prep and cook work is combined across all orders, one card per station.
 - Adding orders mid-round reopens only the difference.

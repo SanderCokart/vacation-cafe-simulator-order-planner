@@ -2,7 +2,7 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
 import type { Amounts } from "@/data/items"
-import type { StartedWave, Wave } from "@/lib/waves"
+import type { PlanMode, StartedWave, Wave } from "@/lib/waves"
 
 export interface OrderLine {
   recipeId: string
@@ -24,6 +24,7 @@ interface State {
   /** Waves that have started, in the order they were started. */
   waves: StartedWave[]
   spares: Amounts
+  mode: PlanMode
 }
 
 export type WavePatch = Partial<
@@ -43,6 +44,7 @@ interface Actions {
   updateWave: (wave: Wave, patch: WavePatch) => void
   newRound: (spares: Amounts) => void
   clearSpares: () => void
+  setMode: (mode: PlanMode) => void
 }
 
 const emptyRound = {
@@ -66,6 +68,7 @@ export const usePlanner = create<State & Actions>()(
     (set, get) => ({
       ...emptyRound,
       spares: {},
+      mode: "table",
 
       addDish: (recipeId) =>
         set((state) => {
@@ -170,6 +173,7 @@ export const usePlanner = create<State & Actions>()(
             : undefined
           const base: StartedWave = existing ?? {
             id: crypto.randomUUID(),
+            kind: wave.kind,
             dishes: wave.dishes,
             done: {},
             collected: {},
@@ -193,6 +197,8 @@ export const usePlanner = create<State & Actions>()(
       newRound: (spares) => set({ ...emptyRound, spares }),
 
       clearSpares: () => set({ spares: {} }),
+
+      setMode: (mode) => set({ mode }),
     }),
     {
       name: "vacation-cafe-planner",
@@ -203,13 +209,14 @@ export const usePlanner = create<State & Actions>()(
         if (version < 2) return { ...state, waves: [] }
         return state
       },
-      partialize: ({ orders, currentOrderId, nextNumber, waves, spares }) => ({
+      partialize: ({
         orders,
         currentOrderId,
         nextNumber,
         waves,
         spares,
-      }),
+        mode,
+      }) => ({ orders, currentOrderId, nextNumber, waves, spares, mode }),
     }
   )
 )

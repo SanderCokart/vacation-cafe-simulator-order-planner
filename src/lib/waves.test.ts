@@ -53,10 +53,11 @@ describe("peakSlots", () => {
 })
 
 describe("planWaves", () => {
-  it("keeps a small round in one wave", () => {
+  it("keeps a small round in one food wave, with drinks first", () => {
     const result = waves({ orders: [order("a", { caprese: 2, espresso: 1 })] })
-    expect(result).toHaveLength(1)
-    expect(result[0].peak).toBeLessThanOrEqual(INVENTORY_SLOTS)
+    expect(result.map((wave) => wave.kind)).toEqual(["drinks", "food"])
+    for (const wave of result)
+      expect(wave.peak).toBeLessThanOrEqual(INVENTORY_SLOTS)
   })
 
   it("splits a round that doesn't fit in 10 slots", () => {
@@ -172,5 +173,128 @@ describe("roundLeftovers", () => {
     ]
     const result = waves({ orders, started })
     expect(roundLeftovers(result, started, {})).toEqual({ groundCoffee: 3 })
+  })
+})
+
+const dishCount = (groups: { dishes: { qty: number }[] }[]) =>
+  groups.reduce(
+    (sum, group) =>
+      sum + group.dishes.reduce((total, dish) => total + dish.qty, 0),
+    0
+  )
+
+describe("table priority", () => {
+  const table = (id: string, lines: Record<string, number>) => order(id, lines)
+
+  it("serves drinks straight away in their own wave", () => {
+    const result = waves({
+      orders: [
+        table("t1", { chianti: 2, caprese: 1 }),
+        table("t2", { espresso: 1 }),
+      ],
+    })
+    expect(result[0].kind).toBe("drinks")
+    expect(result[0].service.putAside).toEqual([])
+    expect(result[0].service.serve.map((group) => group.orderId)).toEqual([
+      "t1",
+      "t2",
+    ])
+  })
+
+  it("finishes tables in order", () => {
+    const result = waves({
+      orders: [
+        table("t1", { antipastoMisto: 2 }),
+        table("t2", { caprese: 2 }),
+        table("t3", { antipastoMisto: 1 }),
+      ],
+    })
+    const firstServed = result.flatMap((wave) =>
+      wave.service.serve.map((group) => group.orderId)
+    )
+    expect(firstServed.indexOf("t1")).toBeLessThan(firstServed.indexOf("t3"))
+  })
+
+  it("puts unfinished tables aside and serves them together later", () => {
+    const result = waves({
+      orders: [
+        table("t1", { margherita: 3, carbonara: 2, seaBass: 2, lasagna: 2 }),
+      ],
+    })
+    expect(result.length).toBeGreaterThan(1)
+    const last = result[result.length - 1]
+    expect(last.service.serve).toHaveLength(1)
+    const served = last.service.serve[0]
+    expect(
+      dishCount([served]) +
+        served.fromCounter.reduce((sum, dish) => sum + dish.qty, 0)
+    ).toBe(9)
+    for (const wave of result.slice(0, -1)) {
+      expect(wave.service.serve).toEqual([])
+      expect(wave.service.putAside.map((group) => group.orderId)).toEqual([
+        "t1",
+      ])
+    }
+  })
+
+  it("keeps room to carry the tables it completes", () => {
+    const orders = [
+      table("t1", { caprese: 4 }),
+      table("t2", { caprese: 4 }),
+      table("t3", { caprese: 4 }),
+    ]
+    for (const wave of waves({ orders })) {
+      const load = wave.service.serve.reduce(
+        (sum, group) =>
+          sum +
+          dishCount([group]) +
+          group.fromCounter.reduce((total, dish) => total + dish.qty, 0),
+        0
+      )
+      if (wave.service.serve.length > 1)
+        expect(load).toBeLessThanOrEqual(INVENTORY_SLOTS)
+    }
+  })
+
+  it("serves a table bigger than your hands in several trips", () => {
+    const result = waves({ orders: [table("t1", { caprese: 12 })] })
+    const last = result[result.length - 1].service.serve[0]
+    expect(last.trips).toBe(2)
+  })
+
+  it("gives late drinks their own wave before the remaining food", () => {
+    const started: StartedWave[] = [
+      {
+        id: "w1",
+        kind: "food",
+        dishes: [{ orderId: "t1", recipeId: "caprese", qty: 1 }],
+        done: {},
+        collected: {},
+        served: false,
+      },
+    ]
+    const result = waves({
+      orders: [
+        table("t1", { caprese: 1 }),
+        table("t2", { chianti: 1, caprese: 1 }),
+      ],
+      started,
+    })
+    expect(result.map((wave) => wave.kind)).toEqual(["food", "drinks", "food"])
+  })
+
+  it("packs batch partners across tables in efficient mode", () => {
+    const orders = [
+      table("t1", { carbonara: 1, antipastoMisto: 2 }),
+      table("t2", { caprese: 3 }),
+      table("t3", { amatriciana: 1 }),
+    ]
+    const pastaWaves = (mode: "table" | "efficient") =>
+      waves({ orders, mode }).filter((wave) =>
+        wave.dishes.some((dish) =>
+          ["carbonara", "amatriciana"].includes(dish.recipeId)
+        )
+      ).length
+    expect(pastaWaves("efficient")).toBe(1)
   })
 })

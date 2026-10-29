@@ -102,3 +102,19 @@ Facts so far:
 - **Plating cards.** A wave's Plate card groups dishes by order. An order counts as delivered once all its dishes are served, even across waves.
 - **Waves are self-contained.** No storage carries over between waves; only true leftovers do, dropped on a counter.
 - **Coffee cups.** Coffee needs a cup from the cupboard. Empty cups are assumed to stack 10 per slot, like glasses. A filled cup takes 1 slot and doesn't stack.
+
+## Table priority mode (built in v3)
+- **Two modes.** A toggle next to the wave stepper, remembered between sessions. **Table priority** is the default; **Efficient** packs for the fewest trips. Switching only reshuffles waves that haven't started.
+- **Table order.** In table priority, tables are finished in order-number order.
+- **Spare room.** Leftover room in a wave is filled with the next table's dishes, so the inventory is used as fully as possible. Those dishes are put aside on the counter until their table is complete.
+- **Partial serving.** Customers accept part of their order (only drinks, or only food), and drinks are normally served before food.
+- **Drinks overview.** You'd like to see the drinks every table needs next to the current table's drinks, so all drinks can be made in one go.
+- **Pickup room.** When a table is completed, its dishes from the counter plus this wave's finished items must fit in 10 slots. A table bigger than your hands is served in two trips, and the plate card says so.
+- **Serve whole tables in both modes.** Efficient only changes how dishes are packed into waves.
+- **Plate card.** One card with three sections, grouped by table: plate, put aside on the counter, then pick up and serve. One Done button.
+- **Drinks first.** The first wave(s) make drinks for every table at once, and each table gets its drinks right away. Serve-together applies to each table's food.
+- **Drinks strip.** A compact strip above the wave shows the drinks still needed across all tables and for the current table. Once they're all served, it shrinks to "All drinks served ✓".
+- **What counts as a drink.** Coffee and Wine categories only. Panna cotta comes in a glass but is a dessert, so it goes with food.
+- **No courses.** Desserts go out with the food.
+- **Drinks first in both modes.** Efficient mode also starts with the drinks wave(s).
+- **Drinks ordered later.** They get their own small drinks wave, placed right after the waves already started and ahead of the remaining food waves.

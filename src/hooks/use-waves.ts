@@ -7,8 +7,9 @@ export function useWaves() {
   const orders = usePlanner((state) => state.orders)
   const started = usePlanner((state) => state.waves)
   const spares = usePlanner((state) => state.spares)
+  const mode = usePlanner((state) => state.mode)
   return useMemo(() => {
-    const waves = planWaves({ orders, started, spares })
+    const waves = planWaves({ orders, started, spares, mode })
     const delivered = deliveredOrderIds(orders, waves)
     return {
       waves,
@@ -16,5 +17,5 @@ export function useWaves() {
       activeOrders: orders.filter((order) => !delivered.has(order.id)),
       leftovers: () => roundLeftovers(waves, started, spares),
     }
-  }, [orders, started, spares])
+  }, [orders, started, spares, mode])
 }

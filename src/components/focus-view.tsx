@@ -5,9 +5,10 @@ import {
   ChevronRight,
   RotateCcw,
 } from "lucide-react"
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { cn } from "cn"
 
+import { DrinksStrip } from "@/components/drinks-strip"
 import { PHASE_ICONS, PHASE_TINTS } from "@/components/phase"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
@@ -17,7 +18,7 @@ import { RECIPE_BY_ID } from "@/data/recipes"
 import { PHASE_LABELS, PHASES, type Phase } from "@/data/stations"
 import { useWaves } from "@/hooks/use-waves"
 import { INVENTORY_SLOTS } from "@/lib/slots"
-import type { Wave } from "@/lib/waves"
+import type { PlanMode, Wave, WaveDish } from "@/lib/waves"
 import { orderName, usePlanner, type Order } from "@/store"
 
 interface CardLine {
@@ -27,6 +28,8 @@ interface CardLine {
   detail?: string
   /** Already-done amount, shown when new orders reopened the card. */
   done?: number
+  /** Heading shown above the first line of each section. */
+  section?: string
 }
 
 interface FocusCard {
@@ -133,29 +136,66 @@ function buildCards(wave: Wave, orders: Order[]): FocusCard[] {
   }
 
   const orderById = new Map(orders.map((order) => [order.id, order]))
+  const nameOf = (orderId: string) => {
+    const order = orderById.get(orderId)
+    return order ? orderName(order) : "Removed order"
+  }
+  const dishList = (dishes: WaveDish[]) =>
+    dishes
+      .map((dish) => `${dish.qty} ${RECIPE_BY_ID[dish.recipeId]?.name}`)
+      .join(", ")
+  const total = (dishes: WaveDish[]) =>
+    dishes.reduce((sum, dish) => sum + dish.qty, 0)
   const plated = [...wave.dishes].sort(
     (a, b) =>
       (orderById.get(a.orderId)?.number ?? 0) -
       (orderById.get(b.orderId)?.number ?? 0)
   )
+  const drinks = wave.kind === "drinks"
   cards.push({
     id: "serve",
     phase: "plate",
-    title: "Plate and serve",
-    lines: plated.map((dish) => {
-      const recipe = RECIPE_BY_ID[dish.recipeId]
-      const order = orderById.get(dish.orderId)
-      return {
-        key: `${dish.orderId}:${dish.recipeId}`,
-        qty: dish.qty,
-        name: recipe?.name,
-        detail: [order && `For ${orderName(order)}`, recipe?.serve]
-          .filter(Boolean)
-          .join(" · "),
-      }
-    }),
+    title: drinks ? "Serve drinks" : "Plate and serve",
+    lines: [
+      ...plated.map((dish) => {
+        const recipe = RECIPE_BY_ID[dish.recipeId]
+        return {
+          key: `plate:${dish.orderId}:${dish.recipeId}`,
+          section: drinks ? "Pour and finish" : "Plate",
+          qty: dish.qty,
+          name: recipe?.name,
+          detail: [`For ${nameOf(dish.orderId)}`, recipe?.serve]
+            .filter(Boolean)
+            .join(" · "),
+        }
+      }),
+      ...wave.service.putAside.map((group) => ({
+        key: `aside:${group.orderId}`,
+        section: "Put aside on the counter",
+        qty: total(group.dishes),
+        name: nameOf(group.orderId),
+        detail: `${dishList(group.dishes)} · served when the table is complete`,
+      })),
+      ...wave.service.serve.map((group) => ({
+        key: `serve:${group.orderId}`,
+        section: drinks ? "Serve" : "Pick up and serve",
+        qty: total(group.dishes) + total(group.fromCounter),
+        name: drinks
+          ? `${nameOf(group.orderId)} drinks`
+          : `${nameOf(group.orderId)} together`,
+        detail:
+          [
+            group.fromCounter.length &&
+              `Pick up ${dishList(group.fromCounter)} from the counter`,
+            group.trips > 1 &&
+              `Too much to carry at once: serve in ${group.trips} trips`,
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined,
+      })),
+    ],
     complete: wave.served,
-    doneLabel: "Served",
+    doneLabel: "Done",
     onDone: () => updateWave(wave, { served: true }),
     onReopen: () => updateWave(wave, { served: false }),
   })
@@ -175,30 +215,39 @@ function Lines({ card, large }: { card: FocusCard; large?: boolean }) {
           "sm:grid-cols-2"
       )}
     >
-      {card.lines.map((line) => (
-        <li key={line.key} className="flex items-baseline gap-3">
-          <span
-            className={cn(
-              "shrink-0 text-right font-medium tabular-nums",
-              large ? "w-10 text-2xl" : "w-6"
+      {card.lines.map((line, index) => (
+        <Fragment key={line.key}>
+          {large &&
+            line.section &&
+            line.section !== card.lines[index - 1]?.section && (
+              <li className="pt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase first:pt-0">
+                {line.section}
+              </li>
             )}
-          >
-            {line.qty}×
-          </span>
-          <span className="min-w-0">
-            <span className={cn(large && "text-lg")}>{line.name}</span>
-            {large && (line.detail || (!card.complete && !!line.done)) && (
-              <span className="block text-sm text-muted-foreground">
-                {[
-                  line.detail,
-                  !card.complete && line.done && `${line.done} already done`,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
-            )}
-          </span>
-        </li>
+          <li className="flex items-baseline gap-3">
+            <span
+              className={cn(
+                "shrink-0 text-right font-medium tabular-nums",
+                large ? "w-10 text-2xl" : "w-6"
+              )}
+            >
+              {line.qty}×
+            </span>
+            <span className="min-w-0">
+              <span className={cn(large && "text-lg")}>{line.name}</span>
+              {large && (line.detail || (!card.complete && !!line.done)) && (
+                <span className="block text-sm text-muted-foreground">
+                  {[
+                    line.detail,
+                    !card.complete && line.done && `${line.done} already done`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              )}
+            </span>
+          </li>
+        </Fragment>
       ))}
     </ul>
   )
@@ -259,7 +308,7 @@ function WaveStepper({
         <ChevronLeft />
       </Button>
       <h2 className="min-w-28 text-center text-lg font-medium">
-        Wave {index + 1}{" "}
+        {wave.kind === "drinks" ? "Drinks wave" : "Wave"} {index + 1}{" "}
         <span className="text-muted-foreground">of {waves.length}</span>
       </h2>
       <Button
@@ -288,6 +337,47 @@ function WaveStepper({
           <Check className="size-3.5" /> Served
         </span>
       )}
+      <ModeToggle />
+    </div>
+  )
+}
+
+function ModeToggle() {
+  const mode = usePlanner((state) => state.mode)
+  const setMode = usePlanner((state) => state.setMode)
+  const options: { value: PlanMode; label: string; title: string }[] = [
+    {
+      value: "table",
+      label: "Table priority",
+      title: "Finish whole tables first, in order",
+    },
+    {
+      value: "efficient",
+      label: "Efficient",
+      title: "Pack dishes for the fewest waves",
+    },
+  ]
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Planning mode"
+      className="ml-auto inline-flex rounded-full bg-muted p-0.5 font-sans text-xs"
+    >
+      {options.map((option) => (
+        <button
+          key={option.value}
+          role="radio"
+          aria-checked={mode === option.value}
+          title={option.title}
+          onClick={() => setMode(option.value)}
+          className={cn(
+            "rounded-full px-3 py-1 font-medium text-muted-foreground transition-colors",
+            mode === option.value && "bg-background text-foreground shadow-xs"
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -335,6 +425,7 @@ export function FocusView() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 p-4 md:p-6">
       <WaveStepper waves={waves} index={waveIndex} onChange={goToWave} />
+      <DrinksStrip orders={orders} waves={waves} />
       {wave.overfull && (
         <p className="font-sans text-sm text-destructive">
           One dish in this wave needs more than {INVENTORY_SLOTS} slots on its
