@@ -127,10 +127,19 @@ export const isDrink = (recipeId: string) => {
   return category === "Coffee" || category === "Wine"
 }
 
+const isCoffee = (recipeId: string) =>
+  RECIPE_BY_ID[recipeId]?.category === "Coffee"
+
+/** The coffee machine brews this many cups at once. */
+export const COFFEE_BATCH = 2
+
+/** Keys like "food:<orderId>": a table's drinks and food complete separately. */
+const tableKey = (kind: WaveKind, orderId: string) => `${kind}:${orderId}`
+
 interface ServeState {
-  /** Food dishes per order already in earlier waves. */
+  /** Dishes per table key already in earlier waves. */
   placed: Map<string, number>
-  /** Finished food per order waiting on the counter. */
+  /** Finished dishes per table key waiting on the counter. */
   counter: Map<string, WaveDish[]>
 }
 
@@ -150,16 +159,18 @@ const countDishes = (dishes: WaveDish[]) =>
   dishes.reduce((sum, dish) => sum + dish.qty, 0)
 
 /**
- * Works out what happens to a wave's finished dishes. Drinks are served
- * straight away. Food for a table that isn't complete yet goes aside on the
- * counter; once its last dishes are plated, the table is served together.
+ * Works out what happens to a wave's finished dishes. Food for a table that
+ * isn't complete yet goes aside on the counter; once its last dishes are
+ * plated, the table is served together. Drinks work the same way in table
+ * priority, and are served straight away in efficient mode.
  */
 function serveWave(
   dishes: WaveDish[],
   kind: WaveKind,
   state: ServeState,
   orderIds: string[],
-  foodTotals: Map<string, number>
+  totals: Map<string, number>,
+  mode: PlanMode
 ) {
   const byOrder = orderIds
     .map((orderId) => ({
@@ -168,7 +179,7 @@ function serveWave(
     }))
     .filter((group) => group.dishes.length)
 
-  if (kind === "drinks") {
+  if (kind === "drinks" && mode === "efficient") {
     const serve = byOrder.map((group) => ({
       ...group,
       fromCounter: [],
@@ -183,21 +194,21 @@ function serveWave(
   }
   const service: Service = { putAside: [], serve: [] }
   for (const group of byOrder) {
-    const placed =
-      (next.placed.get(group.orderId) ?? 0) + countDishes(group.dishes)
-    next.placed.set(group.orderId, placed)
-    const counter = next.counter.get(group.orderId) ?? []
-    if (placed >= (foodTotals.get(group.orderId) ?? 0)) {
+    const k = tableKey(kind, group.orderId)
+    const placed = (next.placed.get(k) ?? 0) + countDishes(group.dishes)
+    next.placed.set(k, placed)
+    const counter = next.counter.get(k) ?? []
+    if (placed >= (totals.get(k) ?? 0)) {
       const load = countDishes(group.dishes) + countDishes(counter)
       service.serve.push({
         ...group,
         fromCounter: counter,
         trips: Math.ceil(load / INVENTORY_SLOTS),
       })
-      next.counter.delete(group.orderId)
+      next.counter.delete(k)
     } else {
       service.putAside.push(group)
-      next.counter.set(group.orderId, mergeDishes(counter, group.dishes))
+      next.counter.set(k, mergeDishes(counter, group.dishes))
     }
   }
   const load = service.serve.reduce(
@@ -225,13 +236,12 @@ export function planWaves({
   const orderIds = orders.map((order) => order.id)
   const tableIndex = new Map(orderIds.map((id, index) => [id, index]))
   const available = new Map<string, number>()
-  const foodTotals = new Map<string, number>()
+  const totals = new Map<string, number>()
   for (const order of orders) {
     for (const line of order.lines) {
       available.set(key(order.id, line.recipeId), line.qty)
-      if (!isDrink(line.recipeId)) {
-        foodTotals.set(order.id, (foodTotals.get(order.id) ?? 0) + line.qty)
-      }
+      const k = tableKey(isDrink(line.recipeId) ? "drinks" : "food", order.id)
+      totals.set(k, (totals.get(k) ?? 0) + line.qty)
     }
   }
 
@@ -247,7 +257,7 @@ export function planWaves({
     overfull: boolean
   ) => {
     const { counts, plan: wavePlan, peak } = measure(dishes, carried, progress)
-    const served = serveWave(dishes, kind, state, orderIds, foodTotals)
+    const served = serveWave(dishes, kind, state, orderIds, totals, mode)
     waves.push({
       id,
       kind,
@@ -309,6 +319,33 @@ export function planWaves({
       : byFamily(a, b) || byTable(a, b)
   )
 
+  const fitsWave = (candidate: WaveDish[], kind: WaveKind) =>
+    measure(candidate, carried).peak <= INVENTORY_SLOTS &&
+    serveWave(candidate, kind, state, orderIds, totals, mode).fits
+
+  /** Evens out the coffee count so the machine never brews a single cup it could pair. */
+  const pairCoffee = (dishes: WaveDish[], queue: QueuedDish[]) => {
+    const coffees = countDishes(
+      dishes.filter((dish) => isCoffee(dish.recipeId))
+    )
+    if (coffees % COFFEE_BATCH === 0) return dishes
+    const nextIndex = queue.findIndex((dish) => isCoffee(dish.recipeId))
+    if (nextIndex === -1) return dishes
+    const { orderId, recipeId } = queue[nextIndex]
+    const candidate = addDish(dishes, orderId, recipeId)
+    if (fitsWave(candidate, "drinks")) {
+      queue.splice(nextIndex, 1)
+      return candidate
+    }
+    if (coffees < COFFEE_BATCH + 1) return dishes
+    // No room for a partner: hand one cup to the next wave to pair up there.
+    const last = [...dishes].reverse().find((dish) => isCoffee(dish.recipeId))!
+    queue.unshift({ orderId: last.orderId, recipeId: last.recipeId })
+    return dishes
+      .map((dish) => (dish === last ? { ...dish, qty: dish.qty - 1 } : dish))
+      .filter((dish) => dish.qty > 0)
+  }
+
   const pack = (queue: QueuedDish[], kind: WaveKind) => {
     while (queue.length) {
       let dishes: WaveDish[] = []
@@ -316,9 +353,7 @@ export function planWaves({
       for (let index = 0; index < queue.length;) {
         const { orderId, recipeId } = queue[index]
         const candidate = addDish(dishes, orderId, recipeId)
-        const fits =
-          measure(candidate, carried).peak <= INVENTORY_SLOTS &&
-          serveWave(candidate, kind, state, orderIds, foodTotals).fits
+        const fits = fitsWave(candidate, kind)
         if (fits || !dishes.length) {
           overfull ||= !fits
           dishes = candidate
@@ -328,6 +363,7 @@ export function planWaves({
           index++
         }
       }
+      if (kind === "drinks" && !overfull) dishes = pairCoffee(dishes, queue)
       push(null, kind, dishes, undefined, overfull)
     }
   }

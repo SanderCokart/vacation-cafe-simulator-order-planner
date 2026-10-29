@@ -32,6 +32,7 @@ const p = (
 export const PROCESSES: Process[] = [
   // Prep
   p("fish", "cleanSeaBass", "Sea bass", { seaBass: 1 }),
+  p("fish", "cleanSeaBream", "Sea bream (dorada)", { seaBream: 1 }),
   // The cleaning station only takes batches of 6 (6, 12 or 18 at a time).
   p("seafood", "cleanMussels", "Mussels (batch of 6)", { mussels: 6 }, 6),
   p("seafood", "cleanClams", "Clams (batch of 6)", { clams: 6 }, 6),
@@ -49,6 +50,7 @@ export const PROCESSES: Process[] = [
   p("cutter", "slicedHam", "Ham", { ham: 1 }),
   p("cutter", "slicedSalami", "Spicy salami", { spicySalami: 1 }),
   p("cutter", "slicedArtichoke", "Artichoke", { artichoke: 1 }),
+  p("cutter", "slicedBeef", "Beef", { beef: 1 }),
   p("cutter", "cutLemon", "Lemon", { lemon: 1 }),
   p("grater", "gratedParmesan", "Parmesan", { parmesan: 1 }),
   p("grater", "gratedPecorino", "Pecorino", { pecorino: 1 }),
@@ -73,7 +75,28 @@ export const PROCESSES: Process[] = [
     glass: 1,
     cacao: 1,
   }),
+  // A full milk bottle goes into each croissant dough.
+  p("mixer", "croissantDough", "Croissant dough", {
+    flour: 1,
+    milk: 6,
+    eggs: 1,
+    freshYeast: 1,
+  }),
+  p("mixer", "chocolateFilling", "Chocolate filling", {
+    eggs: 1,
+    sugar: 1,
+    cacao: 1,
+    mascarpone: 1,
+  }),
   p("doughTable", "pizzaBase", "Pizza base", { pizzaDough: 1 }),
+  // Rolling and cutting one croissant dough gives 3 preforms.
+  p(
+    "doughTable",
+    "rawCroissant",
+    "Croissant dough (roll and cut)",
+    { croissantDough: 1 },
+    3
+  ),
   p("pastaMachine", "spaghetti", "Spaghetti", { pastaDough: 1 }),
   p("pastaMachine", "trofie", "Trofie", { pastaDough: 1 }),
   // Lasagna sheet yield is unverified (docs/TODO.md).
@@ -115,10 +138,20 @@ export const PROCESSES: Process[] = [
     gratedParmesan: 1,
     oliveOil: 1,
   }),
+  // An oven holds 3 croissants at a time.
+  p("oven", "croissant", "Croissants (3 per oven)", { rawCroissant: 1 }),
   p("oven", "bakedSeaBass", "Sea bass", {
     cleanSeaBass: 1,
     cutLemon: 1,
     thyme: 1,
+    oliveOil: 1,
+  }),
+  // The garlic goes in whole, uncut.
+  p("oven", "bakedDorada", "Dorada", {
+    cleanSeaBream: 1,
+    slicedTomato: 2,
+    garlic: 1,
+    oliveOil: 1,
   }),
   p("pizzaOven", "pizzaMargherita", "Margherita", {
     pizzaBase: 1,

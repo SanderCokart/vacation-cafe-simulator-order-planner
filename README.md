@@ -30,9 +30,11 @@ Other scripts: `pnpm test` (Vitest), `pnpm build`, `pnpm lint`.
   - Dishes that share a batch (pasta pots, ciabatta, coffee grinds, seafood) stay together, and leftovers carry over to the next wave.
   - Once a wave has started, it never changes.
 - **Table priority (default) or Efficient.** Use the toggle next to the wave stepper:
-  - **Drinks first.** The first waves make drinks for every table and serve them straight away. A strip above the wave shows the drinks still needed per table.
+  - **Drinks first.** The first waves make drinks for every table. A strip above the wave shows the drinks still needed per table. In table priority, a table's drinks wait on the counter until all of them are ready; in Efficient they're served straight away.
   - **Table priority** finishes tables in order and fills any spare room with the next table's dishes. **Efficient** packs food for the fewest waves.
   - **Whole tables at once.** In both modes, food for a table that isn't complete goes aside on the counter. The wave that completes the table tells you to pick it back up and serve the table together.
+- **Log.** The Log button in the header shows every step: orders, waves started (with their dishes and slot use), cards done and reopened, served waves, mode changes and rounds. Each has a timestamp and round number. Export it as JSON to look for optimizations.
+- **Coffee in pairs.** The coffee machine brews 2 cups at once, so drinks waves keep an even number of coffees where they can. The coffee card says how many rounds of 2 to brew.
 - Click an order's name to give it a table number.
 - Prep and cook work is combined across all orders, one card per station.
 - Adding orders mid-round reopens only the difference.

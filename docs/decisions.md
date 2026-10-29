@@ -118,3 +118,15 @@ Facts so far:
 - **No courses.** Desserts go out with the food.
 - **Drinks first in both modes.** Efficient mode also starts with the drinks wave(s).
 - **Drinks ordered later.** They get their own small drinks wave, placed right after the waves already started and ahead of the remaining food waves.
+
+## Log and coffee pairs (v4)
+- **Activity log.** Every step is logged with a timestamp and round number, to look for further optimizations:
+  - Orders: dishes added or removed, new, renamed or deleted orders.
+  - Waves: started (with dishes, mode and slot use), cards done or reopened, served.
+  - Rounds and settings: new rounds, cleared spares, mode changes.
+  - It's kept in localStorage (up to 5000 entries) and can be exported as JSON or cleared.
+- **Coffee in pairs.** The coffee machine brews 2 cups at once. Drinks waves aim for an even number of coffees: they take a partner cup from the next table if it fits, or pass one cup on to the next wave. The coffee card shows how many rounds of 2 to brew.
+- **Croissant yield (corrected).** 1 croissant dough rolls into 3 croissant preforms, which are baked and plated; fillings go in after plating. The mixer no longer makes 5 per mix.
+- **Mixer multiplier.** The mixer runs one recipe at a time at 1× to 5×, multiplying every ingredient (a croissant dough at 5× uses 36 of 36 milk). Its card shows the number of rounds, and each line says which multiplier to set, for example "Set to 5× then 2×".
+- **Log copy.** The log can also be copied to the clipboard as JSON.
+- **Drinks in table priority.** A table's drinks are put aside until all of its drinks are ready, then served together. Efficient mode still serves drinks straight away.

@@ -38,10 +38,11 @@ export interface Recipe {
 export const RECIPES: Recipe[] = [
   {
     id: "tomatoBruschetta",
-    name: "Tomato Bruschetta",
+    name: "Bruschetta with Tomatoes",
     category: "Bruschetta",
     plate: { toastedBread: 1, slicedTomato: 2, basil: 2, oliveOil: 1 },
     serve: "Bread, tomato, basil, then olive oil",
+    aliases: ["tomato bruschetta"],
   },
   {
     id: "bruschettaFunghi",
@@ -53,7 +54,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     id: "pestoBruschetta",
-    name: "Pesto Bruschetta",
+    name: "Bruschetta al Pesto",
     category: "Bruschetta",
     plate: {
       toastedBread: 1,
@@ -64,25 +65,26 @@ export const RECIPES: Recipe[] = [
       oliveOil: 1,
     },
     serve: "Bread, pesto, tomato, mozzarella, basil, olive oil",
+    aliases: ["pesto bruschetta"],
   },
   {
     id: "margherita",
-    name: "Pizza Margherita",
+    name: "Margherita Pizza",
     category: "Pizza",
     plate: { pizzaMargherita: 1 },
     serve: "Take out of the pizza oven and serve",
   },
   {
     id: "spicySalamiPizza",
-    name: "Spicy Salami Pizza",
+    name: "Salami Piccante",
     category: "Pizza",
     plate: { pizzaSalami: 1 },
     serve: "Take out of the pizza oven and serve",
-    aliases: ["pepperoni"],
+    aliases: ["spicy salami pizza", "pepperoni"],
   },
   {
     id: "quattroFormaggi",
-    name: "Pizza Quattro Formaggi",
+    name: "Quattro Formaggi Pizza",
     category: "Pizza",
     plate: { pizzaQuattroFormaggi: 1 },
     serve: "Take out of the pizza oven and serve",
@@ -90,7 +92,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     id: "prosciuttoFunghi",
-    name: "Pizza Prosciutto e Funghi",
+    name: "Prosciutto e Funghi Pizza",
     category: "Pizza",
     plate: { pizzaProsciuttoFunghi: 1 },
     serve: "Take out of the pizza oven and serve",
@@ -98,7 +100,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     id: "capricciosa",
-    name: "Pizza Capricciosa",
+    name: "Capricciosa Pizza",
     category: "Pizza",
     plate: { pizzaCapricciosa: 1 },
     serve: "Take out of the pizza oven and serve",
@@ -132,17 +134,18 @@ export const RECIPES: Recipe[] = [
   },
   {
     id: "lasagna",
-    name: "Lasagna Bolognese",
+    name: "Lasagna alla Bolognese",
     category: "Pasta",
     plate: { bakedLasagna: 1 },
     serve: "Take out of the oven and serve",
   },
   {
     id: "trofiePesto",
-    name: "Trofie with Pesto",
+    name: "Trofie al Pesto",
     category: "Pasta",
     plate: { cookedTrofie: 1, pestoSauce: 1, gratedParmesan: 1 },
     serve: "Toss trofie with pesto, parmesan on top",
+    aliases: ["trofie with pesto"],
   },
   {
     id: "oysters",
@@ -159,6 +162,14 @@ export const RECIPES: Recipe[] = [
     serve: "Take out of the oven, serve on a fish plate",
   },
   {
+    id: "dorada",
+    name: "Dorada with Tomatoes and Garlic",
+    category: "Seafood",
+    plate: { bakedDorada: 1 },
+    serve: "Take out of the oven, serve on a fish plate",
+    aliases: ["sea bream"],
+  },
+  {
     id: "insalataDiMare",
     name: "Insalata di Mare",
     category: "Seafood",
@@ -171,6 +182,33 @@ export const RECIPES: Recipe[] = [
     },
     serve: "Arugula bed, seafood on top, lemon, parsley and olive oil",
     aliases: ["seafood salad"],
+  },
+  {
+    id: "beefCarpaccio",
+    name: "Beef Carpaccio",
+    category: "Cold",
+    plate: {
+      slicedBeef: 1,
+      gratedParmesan: 1,
+      cutLemon: 1,
+      arugula: 1,
+      oliveOil: 1,
+    },
+    serve: "Beef, arugula, parmesan and lemon, then olive oil",
+  },
+  {
+    id: "insalataDiRucola",
+    name: "Insalata di Rucola",
+    category: "Cold",
+    plate: {
+      arugula: 3,
+      gratedParmesan: 1,
+      slicedTomato: 2,
+      cutLemon: 1,
+      oliveOil: 1,
+    },
+    serve: "Arugula, tomato, parmesan and lemon, topped with olive oil",
+    aliases: ["arugula salad"],
   },
   {
     id: "caprese",
@@ -218,6 +256,38 @@ export const RECIPES: Recipe[] = [
     vessel: false,
   },
   {
+    id: "croissant",
+    name: "Croissant",
+    category: "Dessert",
+    plate: { croissant: 1 },
+    serve: "Take out of the oven and serve",
+  },
+  {
+    id: "jamCroissant",
+    name: "Croissant with Jam",
+    category: "Dessert",
+    plate: { croissant: 1, berrySauce: 1 },
+    serve: "Fill with berry sauce",
+    aliases: ["jam croissant", "berry"],
+  },
+  {
+    id: "creamCroissant",
+    name: "Croissant with Cream",
+    category: "Dessert",
+    // The same mascarpone cream as the tiramisu (confirmed).
+    plate: { croissant: 1, mascarponeCream: 1 },
+    serve: "Fill with mascarpone cream",
+    aliases: ["cream croissant"],
+  },
+  {
+    id: "chocolateCroissant",
+    name: "Croissant with Chocolate",
+    category: "Dessert",
+    plate: { croissant: 1, chocolateFilling: 1 },
+    serve: "Fill with chocolate filling",
+    aliases: ["chocolate croissant"],
+  },
+  {
     id: "tiramisu",
     name: "Tiramisu",
     category: "Dessert",
@@ -247,7 +317,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     id: "marocchino",
-    name: "Marocchino",
+    name: "Caffè Marocchino",
     category: "Coffee",
     plate: { marocchino: 1, cacao: 1 },
     serve: "Cacao on top, serve the cup",

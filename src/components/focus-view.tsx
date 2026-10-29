@@ -15,11 +15,11 @@ import { Kbd } from "@/components/ui/kbd"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ITEMS, usesOf, type ItemId } from "@/data/items"
 import { RECIPE_BY_ID } from "@/data/recipes"
-import { PHASE_LABELS, PHASES, type Phase } from "@/data/stations"
+import { PHASE_LABELS, PHASES, type Phase, type Station } from "@/data/stations"
 import { useWaves } from "@/hooks/use-waves"
 import { INVENTORY_SLOTS } from "@/lib/slots"
 import type { PlanMode, Wave, WaveDish } from "@/lib/waves"
-import { orderName, usePlanner, type Order } from "@/store"
+import { orderName, usePlanner, type Order, type WavePatch } from "@/store"
 
 interface CardLine {
   key: string
@@ -38,9 +38,11 @@ interface FocusCard {
   title: string
   lines: CardLine[]
   complete: boolean
+  /** Extra guidance under the title, e.g. how to batch the coffee machine. */
+  note?: string
   doneLabel: string
-  onDone: () => void
-  onReopen?: () => void
+  donePatch: WavePatch
+  reopenPatch?: WavePatch
 }
 
 const listNames = (amounts: Partial<Record<ItemId, number>>) =>
@@ -53,8 +55,33 @@ const listNames = (amounts: Partial<Record<ItemId, number>>) =>
 /** Hides lines already finished before new orders reopened the card. */
 const openLines = (lines: CardLine[]) => lines.filter((line) => line.qty > 0)
 
+/** Splits a count into batches, e.g. 7 at up to 5× → "5× then 2×". */
+const multipliers = (count: number, batch: number) => {
+  const rounds = Array.from({ length: Math.floor(count / batch) }, () => batch)
+  if (count % batch) rounds.push(count % batch)
+  return rounds.map((size) => `${size}×`).join(" then ")
+}
+
+/** How to batch a station's work, e.g. "Takes up to 2 at a time: 3 rounds". */
+function batchNote(station: Station, tasks: { remaining: number }[]) {
+  const { batch, multiplier } = station
+  if (!batch || batch < 2) return undefined
+  if (multiplier) {
+    const rounds = tasks.reduce(
+      (sum, task) => sum + Math.ceil(task.remaining / batch),
+      0
+    )
+    if (!rounds) return undefined
+    return `One recipe at a time, 1× to ${batch}×: ${rounds} ${rounds === 1 ? "round" : "rounds"}`
+  }
+  const items = tasks.reduce((sum, task) => sum + task.remaining, 0)
+  if (!items) return undefined
+  const rounds = Math.ceil(items / batch)
+  const single = items % batch === 1 ? ", last one single" : ""
+  return `Takes up to ${batch} at a time: ${rounds} ${rounds === 1 ? "round" : "rounds"}${single}`
+}
+
 function buildCards(wave: Wave, orders: Order[]): FocusCard[] {
-  const { updateWave } = usePlanner.getState()
   const { plan } = wave
   const cards: FocusCard[] = []
 
@@ -81,18 +108,16 @@ function buildCards(wave: Wave, orders: Order[]): FocusCard[] {
       ),
       complete: plan.gatherComplete,
       doneLabel: "Collected",
-      onDone: () =>
-        updateWave(wave, {
-          collected: Object.fromEntries(
-            plan.gather.map((line) => [line.item, line.need])
-          ),
-        }),
-      onReopen: () =>
-        updateWave(wave, {
-          collected: Object.fromEntries(
-            plan.gather.map((line) => [line.item, 0])
-          ),
-        }),
+      donePatch: {
+        collected: Object.fromEntries(
+          plan.gather.map((line) => [line.item, line.need])
+        ),
+      },
+      reopenPatch: {
+        collected: Object.fromEntries(
+          plan.gather.map((line) => [line.item, 0])
+        ),
+      },
     })
   }
 
@@ -104,7 +129,13 @@ function buildCards(wave: Wave, orders: Order[]): FocusCard[] {
       lines: openLines(
         card.tasks.map((task) => {
           const multiInput = Object.keys(task.process.inputs).length > 1
+          const { batch, multiplier } = card.station
+          const left = card.complete ? task.runs : task.remaining
           const details = [
+            multiplier &&
+              batch &&
+              left > 0 &&
+              `Set to ${multipliers(left, batch)}`,
             multiInput && listNames(task.process.inputs),
             task.process.yield > 1 && `makes ${task.process.yield} each`,
             task.spare > 0 && `${task.spare} spare`,
@@ -119,19 +150,18 @@ function buildCards(wave: Wave, orders: Order[]): FocusCard[] {
         })
       ),
       complete: card.complete,
+      note: batchNote(card.station, card.tasks),
       doneLabel: "Done",
-      onDone: () =>
-        updateWave(wave, {
-          done: Object.fromEntries(
-            card.tasks.map((task) => [task.process.id, task.runs])
-          ),
-        }),
-      onReopen: () =>
-        updateWave(wave, {
-          done: Object.fromEntries(
-            card.tasks.map((task) => [task.process.id, 0])
-          ),
-        }),
+      donePatch: {
+        done: Object.fromEntries(
+          card.tasks.map((task) => [task.process.id, task.runs])
+        ),
+      },
+      reopenPatch: {
+        done: Object.fromEntries(
+          card.tasks.map((task) => [task.process.id, 0])
+        ),
+      },
     })
   }
 
@@ -196,8 +226,8 @@ function buildCards(wave: Wave, orders: Order[]): FocusCard[] {
     ],
     complete: wave.served,
     doneLabel: "Done",
-    onDone: () => updateWave(wave, { served: true }),
-    onReopen: () => updateWave(wave, { served: false }),
+    donePatch: { served: true },
+    reopenPatch: { served: false },
   })
 
   return cards
@@ -389,6 +419,9 @@ export function FocusView() {
   const [chosenPhase, setChosenPhase] = useState<Phase | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
 
+  const mode = usePlanner((state) => state.mode)
+  const updateWave = usePlanner((state) => state.updateWave)
+
   if (!waves.length) return <EmptyState />
 
   const firstOpenWave = Math.max(
@@ -398,6 +431,28 @@ export function FocusView() {
   const waveIndex = Math.min(chosenWave ?? firstOpenWave, waves.length - 1)
   const wave = waves[waveIndex]
   const cards = buildCards(wave, orders)
+
+  const waveLabel = `${wave.kind === "drinks" ? "Drinks wave" : "Wave"} ${waveIndex + 1}`
+  const summary = (card: FocusCard) =>
+    card.lines.map((line) => `${line.qty} ${line.name}`).join(", ")
+  const startNote = () =>
+    wave.id
+      ? []
+      : [
+          `${waveLabel} started (${mode === "table" ? "table priority" : "efficient"}, up to ${wave.peak} of ${INVENTORY_SLOTS} slots): ${wave.dishes
+            .map((dish) => `${dish.qty} ${RECIPE_BY_ID[dish.recipeId]?.name}`)
+            .join(", ")}`,
+        ]
+  const complete = (card: FocusCard) =>
+    updateWave(wave, card.donePatch, [
+      ...startNote(),
+      `${waveLabel} · ${card.title} ${card.doneLabel.toLowerCase()}: ${summary(card)}`,
+    ])
+  const reopen = (card: FocusCard) =>
+    card.reopenPatch &&
+    updateWave(wave, card.reopenPatch, [
+      `${waveLabel} · ${card.title} reopened`,
+    ])
 
   const goToWave = (index: number) => {
     setChosenWave(index)
@@ -465,13 +520,18 @@ export function FocusView() {
             <div className="flex flex-col items-start gap-2">
               <StationPill card={focus} />
               <h2 className="text-3xl font-medium">{focus.title}</h2>
+              {focus.note && (
+                <p className="font-sans text-sm text-muted-foreground">
+                  {focus.note}
+                </p>
+              )}
             </div>
             <Lines card={focus} large />
             <Button
               size="lg"
               className="h-12 text-base"
               onClick={() => {
-                focus.onDone()
+                complete(focus)
                 setFocusedId(null)
               }}
             >
@@ -551,8 +611,12 @@ export function FocusView() {
                     .map((line) => `${line.qty} ${line.name}`)
                     .join(", ")}
                 </span>
-                {card.onReopen && (
-                  <Button variant="ghost" size="xs" onClick={card.onReopen}>
+                {card.reopenPatch && (
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => reopen(card)}
+                  >
                     <RotateCcw /> Reopen
                   </Button>
                 )}

@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
 import type { Amounts } from "@/data/items"
+import { RECIPE_BY_ID } from "@/data/recipes"
 import type { PlanMode, StartedWave, Wave } from "@/lib/waves"
 
 export interface OrderLine {
@@ -17,6 +18,19 @@ export interface Order {
   lines: OrderLine[]
 }
 
+export type LogKind = "order" | "wave" | "round" | "setting"
+
+export interface LogEntry {
+  /** Milliseconds since epoch. */
+  at: number
+  round: number
+  kind: LogKind
+  text: string
+}
+
+/** Oldest entries drop off past this, to keep localStorage small. */
+const LOG_LIMIT = 5000
+
 interface State {
   orders: Order[]
   currentOrderId: string | null
@@ -25,6 +39,9 @@ interface State {
   waves: StartedWave[]
   spares: Amounts
   mode: PlanMode
+  /** Counts rounds so the log can tell them apart. */
+  round: number
+  log: LogEntry[]
 }
 
 export type WavePatch = Partial<
@@ -41,10 +58,11 @@ interface Actions {
   renameOrder: (orderId: string, label: string) => void
   deleteOrder: (orderId: string) => void
   /** Records progress on a wave, starting it first if needed. */
-  updateWave: (wave: Wave, patch: WavePatch) => void
+  updateWave: (wave: Wave, patch: WavePatch, notes?: string[]) => void
   newRound: (spares: Amounts) => void
   clearSpares: () => void
   setMode: (mode: PlanMode) => void
+  clearLog: () => void
 }
 
 const emptyRound = {
@@ -56,6 +74,31 @@ const emptyRound = {
 
 export const orderName = (order: Order) =>
   order.label || `Order ${order.number}`
+
+const recipeName = (recipeId: string) =>
+  RECIPE_BY_ID[recipeId]?.name ?? recipeId
+
+/** Appends log entries; spread the result into a `set` update. */
+const logged = (
+  state: State,
+  kind: LogKind,
+  ...texts: string[]
+): Pick<State, "log"> => ({
+  log: [
+    ...state.log,
+    ...texts.map((text) => ({
+      at: Date.now(),
+      round: state.round,
+      kind,
+      text,
+    })),
+  ].slice(-LOG_LIMIT),
+})
+
+const orderNameById = (orders: Order[], orderId: string) => {
+  const order = orders.find((entry) => entry.id === orderId)
+  return order ? orderName(order) : "Removed order"
+}
 
 const createOrder = (number: number): Order => ({
   id: crypto.randomUUID(),
@@ -69,6 +112,8 @@ export const usePlanner = create<State & Actions>()(
       ...emptyRound,
       spares: {},
       mode: "table",
+      round: 1,
+      log: [],
 
       addDish: (recipeId) =>
         set((state) => {
@@ -96,11 +141,21 @@ export const usePlanner = create<State & Actions>()(
             ),
             currentOrderId: updated.id,
             nextNumber,
+            ...logged(
+              state,
+              "order",
+              `${orderName(updated)}: added ${recipeName(recipeId)}`
+            ),
           }
         }),
 
       removeDish: (orderId, recipeId) =>
         set((state) => ({
+          ...logged(
+            state,
+            "order",
+            `${orderNameById(state.orders, orderId)}: removed ${recipeName(recipeId)}`
+          ),
           orders: state.orders.map((order) =>
             order.id !== orderId
               ? order
@@ -129,6 +184,7 @@ export const usePlanner = create<State & Actions>()(
             orders: [...state.orders, order],
             currentOrderId: order.id,
             nextNumber: state.nextNumber + 1,
+            ...logged(state, "order", `New ${orderName(order)}`),
           }
         }),
 
@@ -148,6 +204,11 @@ export const usePlanner = create<State & Actions>()(
 
       renameOrder: (orderId, label) =>
         set((state) => ({
+          ...logged(
+            state,
+            "order",
+            `${orderNameById(state.orders, orderId)} renamed to ${label.trim() || "its number"}`
+          ),
           orders: state.orders.map((order) =>
             order.id === orderId
               ? { ...order, label: label.trim() || undefined }
@@ -157,6 +218,11 @@ export const usePlanner = create<State & Actions>()(
 
       deleteOrder: (orderId) =>
         set((state) => ({
+          ...logged(
+            state,
+            "order",
+            `Deleted ${orderNameById(state.orders, orderId)}`
+          ),
           orders: state.orders.filter((order) => order.id !== orderId),
           waves: state.waves.map((wave) => ({
             ...wave,
@@ -166,7 +232,7 @@ export const usePlanner = create<State & Actions>()(
             state.currentOrderId === orderId ? null : state.currentOrderId,
         })),
 
-      updateWave: (wave, patch) =>
+      updateWave: (wave, patch, notes = []) =>
         set((state) => {
           const existing = wave.id
             ? state.waves.find((entry) => entry.id === wave.id)
@@ -191,14 +257,42 @@ export const usePlanner = create<State & Actions>()(
                   entry === existing ? updated : entry
                 )
               : [...state.waves, updated],
+            ...logged(state, "wave", ...notes),
           }
         }),
 
-      newRound: (spares) => set({ ...emptyRound, spares }),
+      newRound: (spares) =>
+        set((state) => {
+          const kept = Object.keys(spares).length
+          return {
+            ...emptyRound,
+            spares,
+            round: state.round + 1,
+            ...logged(
+              state,
+              "round",
+              `Round ${state.round} ended${kept ? `, kept ${kept} kinds of spares` : ""}`
+            ),
+          }
+        }),
 
-      clearSpares: () => set({ spares: {} }),
+      clearSpares: () =>
+        set((state) => ({
+          spares: {},
+          ...logged(state, "round", "Cleared spares"),
+        })),
 
-      setMode: (mode) => set({ mode }),
+      setMode: (mode) =>
+        set((state) => ({
+          mode,
+          ...logged(
+            state,
+            "setting",
+            `Mode set to ${mode === "table" ? "table priority" : "efficient"}`
+          ),
+        })),
+
+      clearLog: () => set({ log: [] }),
     }),
     {
       name: "vacation-cafe-planner",
@@ -216,7 +310,18 @@ export const usePlanner = create<State & Actions>()(
         waves,
         spares,
         mode,
-      }) => ({ orders, currentOrderId, nextNumber, waves, spares, mode }),
+        round,
+        log,
+      }) => ({
+        orders,
+        currentOrderId,
+        nextNumber,
+        waves,
+        spares,
+        mode,
+        round,
+        log,
+      }),
     }
   )
 )

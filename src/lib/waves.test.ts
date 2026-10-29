@@ -297,4 +297,53 @@ describe("table priority", () => {
       ).length
     expect(pastaWaves("efficient")).toBe(1)
   })
+
+  it("puts a table's drinks aside until all of them are made", () => {
+    const result = waves({
+      orders: [table("t1", { espresso: 10, caprese: 1 })],
+    })
+    const drinkWaves = result.filter((wave) => wave.kind === "drinks")
+    expect(drinkWaves.length).toBeGreaterThan(1)
+    for (const wave of drinkWaves.slice(0, -1)) {
+      expect(wave.service.serve).toEqual([])
+      expect(wave.service.putAside.map((group) => group.orderId)).toEqual([
+        "t1",
+      ])
+    }
+    expect(
+      drinkWaves[drinkWaves.length - 1].service.serve[0].fromCounter
+    ).not.toEqual([])
+  })
+
+  it("serves drinks straight away in efficient mode", () => {
+    const result = waves({
+      orders: [table("t1", { espresso: 10 })],
+      mode: "efficient",
+    })
+    for (const wave of result) expect(wave.service.putAside).toEqual([])
+  })
+})
+
+describe("coffee pairing", () => {
+  const coffeesPerWave = (result: ReturnType<typeof waves>) =>
+    result
+      .filter((wave) => wave.kind === "drinks")
+      .map((wave) => wave.dishes.reduce((sum, dish) => sum + dish.qty, 0))
+
+  it("brews coffee in pairs across drinks waves", () => {
+    const counts = coffeesPerWave(
+      waves({
+        orders: [order("a", { espresso: 7 }), order("b", { cappuccino: 5 })],
+      })
+    )
+    expect(counts.reduce((sum, count) => sum + count, 0)).toBe(12)
+    for (const count of counts) expect(count % 2).toBe(0)
+  })
+
+  it("leaves a single cup only when the total is odd", () => {
+    const counts = coffeesPerWave(
+      waves({ orders: [order("a", { espresso: 9 })] })
+    )
+    expect(counts.filter((count) => count % 2 === 1)).toHaveLength(1)
+  })
 })

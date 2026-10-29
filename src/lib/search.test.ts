@@ -17,7 +17,7 @@ describe("searchRecipes", () => {
   })
 
   it("matches word prefixes in any order", () => {
-    expect(names("bru tom")[0]).toBe("Tomato Bruschetta")
+    expect(names("bru tom")[0]).toBe("Bruschetta with Tomatoes")
   })
 
   it("ignores accents and case", () => {
@@ -25,11 +25,11 @@ describe("searchRecipes", () => {
   })
 
   it("matches aliases", () => {
-    expect(names("pepperoni")).toEqual(["Spicy Salami Pizza"])
+    expect(names("pepperoni")).toEqual(["Salami Piccante"])
   })
 
   it("falls back to loose subsequence matching", () => {
-    expect(names("qtfmg")).toContain("Pizza Quattro Formaggi")
+    expect(names("qtfmg")).toContain("Quattro Formaggi Pizza")
   })
 
   it("returns nothing for gibberish", () => {

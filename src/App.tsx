@@ -3,6 +3,7 @@ import { ChefHat } from "lucide-react"
 import { FocusView } from "@/components/focus-view"
 import { OrderRail } from "@/components/order-rail"
 import { RecipeSearch } from "@/components/recipe-search"
+import { LogSheet } from "@/components/log-sheet"
 import { RecipeSheet } from "@/components/recipe-sheet"
 
 export function App() {
@@ -18,7 +19,10 @@ export function App() {
         <div className="flex justify-center">
           <RecipeSearch />
         </div>
-        <RecipeSheet />
+        <div className="flex items-center gap-2">
+          <LogSheet />
+          <RecipeSheet />
+        </div>
       </header>
       <div className="grid min-h-0 flex-1 md:grid-cols-[18rem_minmax(0,1fr)]">
         <OrderRail />

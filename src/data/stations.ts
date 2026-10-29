@@ -30,6 +30,10 @@ export interface Station {
   id: StationId
   name: string
   phase: Exclude<Phase, "gather" | "plate">
+  /** How many it works on at once, e.g. the coffee machine brews 2 cups. */
+  batch?: number
+  /** The batch is a multiplier on one recipe (1× to 5×), not a mix of items. */
+  multiplier?: boolean
 }
 
 // Array order is the order cards appear in. Fixed for now; reordering is on the TODO list.
@@ -39,7 +43,8 @@ export const STATIONS: Station[] = [
   { id: "oyster", name: "Oyster table", phase: "prep" },
   { id: "cutter", name: "Cutter", phase: "prep" },
   { id: "grater", name: "Grater", phase: "prep" },
-  { id: "mixer", name: "Mixer", phase: "prep" },
+  // The mixer multiplies one recipe's ingredients 1× to 5×.
+  { id: "mixer", name: "Mixer", phase: "prep", batch: 5, multiplier: true },
   { id: "doughTable", name: "Dough table", phase: "prep" },
   { id: "pastaMachine", name: "Pasta machine", phase: "prep" },
   { id: "grinder", name: "Coffee grinder", phase: "prep" },
@@ -48,7 +53,7 @@ export const STATIONS: Station[] = [
   { id: "pot", name: "Stove · pot", phase: "cook" },
   { id: "oven", name: "Oven", phase: "cook" },
   { id: "pizzaOven", name: "Pizza oven", phase: "cook" },
-  { id: "coffee", name: "Coffee machine", phase: "cook" },
+  { id: "coffee", name: "Coffee machine", phase: "cook", batch: 2 },
 ]
 
 export const STATION_BY_ID = Object.fromEntries(

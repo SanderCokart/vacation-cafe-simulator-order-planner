@@ -189,6 +189,40 @@ describe("plan", () => {
     expect(gathered(result, "cacao")).toBe(1)
   })
 
+  it("rolls 3 croissant preforms per dough, with a full milk bottle each", () => {
+    const result = plan(
+      input({
+        dishes: {
+          croissant: 3,
+          jamCroissant: 1,
+          creamCroissant: 1,
+          chocolateCroissant: 1,
+        },
+      })
+    )
+    expect(task(result, "croissantDough")?.runs).toBe(2)
+    expect(task(result, "rawCroissant")).toMatchObject({ runs: 2, spare: 0 })
+    expect(task(result, "croissant")?.runs).toBe(6)
+    expect(gathered(result, "milk")).toBe(2)
+    expect(gathered(result, "berrySauce")).toBe(1)
+    expect(
+      task(plan(input({ dishes: { croissant: 4 } })), "rawCroissant")
+    ).toMatchObject({ runs: 2, spare: 2 })
+    expect(task(result, "mascarponeCream")?.runs).toBe(1)
+    expect(task(result, "chocolateFilling")?.runs).toBe(1)
+    expect(gathered(result, "mascarpone")).toBe(2)
+  })
+
+  it("bakes a dorada with sliced tomatoes and a whole garlic", () => {
+    const result = plan(input({ dishes: { dorada: 1, insalataDiRucola: 1 } }))
+    expect(task(result, "cleanSeaBream")?.runs).toBe(1)
+    expect(task(result, "bakedDorada")?.runs).toBe(1)
+    expect(task(result, "slicedTomato")?.runs).toBe(4)
+    expect(task(result, "slicedGarlic")).toBeUndefined()
+    expect(gathered(result, "garlic")).toBe(1)
+    expect(gathered(result, "arugula")).toBe(3)
+  })
+
   it("never puts staples like olive oil on the gather list", () => {
     const result = plan(input({ dishes: { caprese: 2 } }))
     expect(result.demand.oliveOil).toBe(2)

@@ -1,6 +1,6 @@
 # Recipe source data
 
-This file is the source of truth for `src/data/recipes.ts` (not written yet). Quantities are per single dish.
+This file is the source of truth for `src/data/recipes.ts`. Recipe names match the in-game menu. Quantities are per single dish.
 `?` marks an assumption that still needs confirming. Missing recipes are listed in [TODO.md](TODO.md).
 
 Shared sub-recipes:
@@ -16,38 +16,41 @@ Shared sub-recipes:
 ## Bruschetta
 | Recipe | Prep | Cook | Plate |
 |---|---|---|---|
-| Tomato Bruschetta | slice ciabatta ×½; slice tomato ×2 | toast bread (stove) | basil ×2, olive oil |
+| Bruschetta with Tomatoes | slice ciabatta ×½; slice tomato ×2 | toast bread (stove) | basil ×2, olive oil |
 | Bruschetta ai Funghi | slice ciabatta ×½; slice mushroom ×2; slice garlic ×1 | toast bread; fry mushrooms + garlic + oil (pan) | parsley ×2, olive oil |
-| Pesto Bruschetta | slice ciabatta ×½; slice tomato ×2; slice mozzarella ×1 | toast bread | pesto sauce ×1, basil ×2, olive oil |
+| Bruschetta al Pesto | slice ciabatta ×½; slice tomato ×2; slice mozzarella ×1 | toast bread | pesto sauce ×1, basil ×2, olive oil |
 
 ## Pizza (prep → cook: assemble + put in the pizza oven → plate: take out and serve)
 | Recipe | Prep | Cook: assemble, then pizza oven |
 |---|---|---|
-| Margherita | pizza dough; slice mozzarella | tomato sauce, mozzarella, basil, olive oil |
-| Spicy Salami | as Margherita + slice spicy salami | as Margherita + salami |
-| Quattro Formaggi | pizza dough; slice mozzarella ×1, gorgonzola ×1; grate parmesan ×1, pecorino ×1 | cheeses, olive oil (no tomato sauce) |
-| Prosciutto e Funghi | pizza dough; slice mozzarella ×1, ham ×1, mushroom ×1 | tomato sauce, olive oil |
-| Capricciosa | pizza dough; slice mozzarella ×1, ham ×1, mushroom ×1, artichoke ×1 | tomato sauce, black olives (kind assumed), olive oil |
+| Margherita Pizza | pizza dough; slice mozzarella | tomato sauce, mozzarella, basil, olive oil |
+| Salami Piccante | as Margherita + slice spicy salami | as Margherita + salami |
+| Quattro Formaggi Pizza | pizza dough; slice mozzarella ×1, gorgonzola ×1; grate parmesan ×1, pecorino ×1 | cheeses, olive oil (no tomato sauce) |
+| Prosciutto e Funghi Pizza | pizza dough; slice mozzarella ×1, ham ×1, mushroom ×1 | tomato sauce, olive oil |
+| Capricciosa Pizza | pizza dough; slice mozzarella ×1, ham ×1, mushroom ×1, artichoke ×1 | tomato sauce, black olives (kind assumed), olive oil |
 
 ## Pasta
 | Recipe | Prep | Cook | Plate |
 |---|---|---|---|
-| Carbonara | spaghetti (pasta dough); grate pecorino; slice guanciale | boil spaghetti; fry guanciale | combine cheese + egg, plate |
-| Amatriciana | spaghetti (pasta dough); slice guanciale; grate pecorino ×1 | fry guanciale, simmer with tomato sauce (pan); boil spaghetti | combine, pecorino on top |
+| Pasta Carbonara | spaghetti (pasta dough); grate pecorino; slice guanciale | boil spaghetti; fry guanciale | combine cheese + egg, plate |
+| Pasta all'Amatriciana | spaghetti (pasta dough); slice guanciale; grate pecorino ×1 | fry guanciale, simmer with tomato sauce (pan); boil spaghetti | combine, pecorino on top |
 | Creamy Shrimp Pasta | spaghetti (pasta dough); slice garlic ×1; grate parmesan ×2 | fry garlic + shrimp + cream + 1 grated parmesan (pan); boil spaghetti | combine, 1 grated parmesan on top |
-| Lasagna Bolognese | sheets (pasta dough); grate parmesan ×1 | ragù: minced meat + garlic + tomato sauce (pan); béchamel: milk + flour (pan); assemble with parmesan + olive oil; oven | take out of oven, serve |
-| Trofie with Pesto | pasta dough → pasta machine (fresh trofie); grate parmesan ×1 | boil trofie (1 boil = 2 servings) | pesto sauce, parmesan |
+| Lasagna alla Bolognese | sheets (pasta dough); grate parmesan ×1 | ragù: minced meat + garlic + tomato sauce (pan); béchamel: milk + flour (pan); assemble with parmesan + olive oil; oven | take out of oven, serve |
+| Trofie al Pesto | pasta dough → pasta machine (fresh trofie); grate parmesan ×1 | boil trofie (1 boil = 2 servings) | pesto sauce, parmesan |
 
 ## Seafood
 | Recipe | Prep | Cook | Plate |
 |---|---|---|---|
 | Oysters with Lemon | shuck oyster (oyster table); lemon wedges | none | plate |
-| Sea Bass with Lemon and Thyme | descale sea bass (fish station); slice lemon | bake (oven) | thyme, fish plate |
+| Sea Bass with Lemon and Thyme | descale sea bass (fish station); cut lemon | assemble with thyme + olive oil, bake (oven) | take out, fish plate |
+| Dorada with Tomatoes and Garlic | descale sea bream (fish station, assumed); slice tomato ×2 | assemble with a whole uncut garlic + olive oil, bake (oven) | take out, fish plate |
 | Insalata di Mare | clean mussels ×3, clams ×3 (seafood station); lemon wedges ×1 | fry shrimp ×3 + mussels ×3 + clams ×3 (pan) | arugula ×3 bed, parsley ×1, olive oil, lemon |
 
 ## Cold
 | Recipe | Prep | Plate |
 |---|---|---|
+| Beef Carpaccio | cut beef ×1; grate parmesan ×1; cut lemon ×1 | arugula ×1, olive oil, assemble |
+| Insalata di Rucola | grate parmesan ×1; slice tomato ×2; cut lemon ×1 | arugula ×3, assemble, olive oil on top |
 | Caprese Salad | slice mozzarella, slice tomato | layer, basil, olive oil |
 | Cheese Platter | cut parmesan, gorgonzola, pecorino (grated? unconfirmed) | assemble |
 | Antipasto Misto | slice ham, spicy salami, artichoke, gorgonzola, pecorino, parmesan | black olives, assemble |
@@ -57,6 +60,10 @@ Shared sub-recipes:
 |---|---|---|
 | Panna Cotta | mixer: cream + sugar + gelatin + empty glass (from the cupboard) → panna cotta preform | serve the glass (topping unknown) |
 | Chocolate Panna Cotta | mixer: cream + sugar + gelatin + empty glass + 1 cacao charge → chocolate preform | another cacao charge on top |
+| Croissant | mixer: flour + full milk bottle (6/6) + eggs + fresh yeast → 1 croissant dough; dough table: roll and cut → 3 croissant preforms; oven: bake (3 per oven) | plate; fillings go in after plating |
+| Croissant with Jam | croissant | fill with berry sauce |
+| Croissant with Cream | croissant; mixer: mascarpone + sugar + egg → mascarpone cream (same as tiramisu) | fill with the mascarpone cream |
+| Croissant with Chocolate | croissant; mixer: egg + sugar + cacao + mascarpone → chocolate filling | fill with the chocolate filling |
 | Tiramisu | mix eggs + sugar + mascarpone into mascarpone cream; 1 espresso shot | ladyfingers (savoiardi), coffee, cream, cacao on top |
 
 ## Drinks
@@ -65,6 +72,6 @@ Shared sub-recipes:
 | Espresso | ground coffee (1 grind = 6) | machine | cup |
 | Cappuccino | ground coffee | machine + milk | cup |
 | Caffè Macchiato | ground coffee | machine + milk foam | cup |
-| Marocchino | ground coffee; cacao in cup | machine + milk | cacao on top |
+| Caffè Marocchino | ground coffee; cacao in cup | machine + milk | cacao on top |
 | Wine (Vermentino, Pinot Grigio, Barbera, Chianti, house) | none | none | pour |
 | Prosecco | none | none | pour |
