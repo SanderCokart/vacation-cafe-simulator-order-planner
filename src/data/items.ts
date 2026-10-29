@@ -2,6 +2,22 @@ export interface Item {
   name: string
   /** Always on hand in unlimited supply, so it's never gathered. */
   staple?: boolean
+  /** How many fit in one inventory slot. Defaults to 10. */
+  stack?: number
+  /** Uses per container, e.g. one milk carton pours 6 times. Defaults to 1. */
+  uses?: number
+}
+
+export const DEFAULT_STACK = 10
+
+export const usesOf = (item: ItemId) => (ITEMS[item] as Item).uses ?? 1
+
+/** Inventory slots taken by an amount (in uses) of an item. */
+export function slotsFor(item: ItemId, amount: number): number {
+  if (amount <= 0) return 0
+  const { staple, stack = DEFAULT_STACK, uses = 1 } = ITEMS[item] as Item
+  if (staple) return 0
+  return Math.ceil(Math.ceil(amount / uses) / stack)
 }
 
 // Raw ingredients are the items no process produces; they show up on the gather list.
@@ -31,11 +47,12 @@ export const ITEMS = {
   flour: { name: "Flour" },
   eggs: { name: "Eggs" },
   freshYeast: { name: "Fresh yeast" },
-  milk: { name: "Milk" },
+  milk: { name: "Milk", uses: 6, stack: 1 },
   cream: { name: "Cream" },
   sugar: { name: "Sugar" },
   gelatin: { name: "Gelatin" },
-  cacao: { name: "Cacao" },
+  cacao: { name: "Cacao", uses: 4, stack: 1 },
+  glass: { name: "Empty glass" },
   mascarpone: { name: "Mascarpone" },
   ladyfingers: { name: "Ladyfingers" },
   mincedMeat: { name: "Minced meat" },
@@ -68,13 +85,17 @@ export const ITEMS = {
   shuckedOyster: { name: "Shucked oyster" },
   pizzaDough: { name: "Pizza dough" },
   pizzaBase: { name: "Pizza base" },
-  spaghettiDough: { name: "Spaghetti dough" },
   spaghetti: { name: "Fresh spaghetti" },
-  lasagnaDough: { name: "Lasagna dough" },
+  pastaDough: { name: "Pasta dough" },
   lasagnaSheets: { name: "Lasagna sheets" },
   trofie: { name: "Fresh trofie" },
   mascarponeCream: { name: "Mascarpone cream" },
-  chocolatePannaCotta: { name: "Chocolate panna cotta mix" },
+  // The preform is already in its glass, so it takes a whole slot.
+  pannaCottaPreform: { name: "Panna cotta preform", stack: 1 },
+  chocolatePannaCottaPreform: {
+    name: "Chocolate panna cotta preform",
+    stack: 1,
+  },
   groundCoffee: { name: "Ground coffee" },
 
   // Cooked
@@ -95,10 +116,11 @@ export const ITEMS = {
   pizzaQuattroFormaggi: { name: "Quattro formaggi" },
   pizzaProsciuttoFunghi: { name: "Prosciutto e funghi" },
   pizzaCapricciosa: { name: "Capricciosa" },
-  espressoShot: { name: "Espresso shot" },
-  cappuccino: { name: "Cappuccino" },
-  macchiato: { name: "Caffè macchiato" },
-  marocchino: { name: "Marocchino" },
+  // A filled cup takes a whole slot.
+  espressoShot: { name: "Espresso shot", stack: 1 },
+  cappuccino: { name: "Cappuccino", stack: 1 },
+  macchiato: { name: "Caffè macchiato", stack: 1 },
+  marocchino: { name: "Marocchino", stack: 1 },
 } satisfies Record<string, Item>
 
 export type ItemId = keyof typeof ITEMS

@@ -6,7 +6,7 @@ This file is the source of truth for `src/data/recipes.ts` (not written yet). Qu
 Shared sub-recipes:
 - **Ciabatta:** 1 ciabatta is sliced into 4 pieces; a bruschetta uses 2 pieces, so 1 ciabatta makes 2 bruschettas.
 - **Pizza dough:** fresh yeast + flour, mixed at the mixer, then rolled out.
-- **Fresh pasta:** eggs + flour, mixed, then put through the pasta machine (spaghetti, sheets, trofie).
+- **Pasta dough:** 2 eggs + 1 flour at the mixer. The pasta machine turns 1 pasta dough into fresh spaghetti, fresh trofie or lasagna sheets.
 - **Boiling pasta:** 1 pot = 1 portion of pasta = 2 servings. Lasagna sheet yield is unverified; keep it editable.
 - **Ground coffee:** coffee beans in the grinder. One grind gives 6 shots from the machine.
 - **Seafood cleaning:** mussels and clams are cleaned in batches of 6 only (6, 12 or 18 at a time, never 3). Leftovers become spares.
@@ -32,11 +32,11 @@ Shared sub-recipes:
 ## Pasta
 | Recipe | Prep | Cook | Plate |
 |---|---|---|---|
-| Carbonara | spaghetti (eggs + flour); grate pecorino; slice guanciale | boil spaghetti; fry guanciale | combine cheese + egg, plate |
-| Amatriciana | spaghetti (eggs + flour); slice guanciale; grate pecorino ×1 | fry guanciale, simmer with tomato sauce (pan); boil spaghetti | combine, pecorino on top |
-| Creamy Shrimp Pasta | spaghetti (eggs ×1 + flour ×1); slice garlic ×1; grate parmesan ×2 | fry garlic + shrimp + cream + 1 grated parmesan (pan); boil spaghetti | combine, 1 grated parmesan on top |
-| Lasagna Bolognese | sheets (eggs + flour); grate parmesan ×1 | ragù: minced meat + garlic + tomato sauce (pan); béchamel: milk + flour (pan); assemble with parmesan + olive oil; oven | take out of oven, serve |
-| Trofie with Pesto | trofie (flour + eggs + milk); grate parmesan ×1 | boil trofie | pesto sauce, parmesan |
+| Carbonara | spaghetti (pasta dough); grate pecorino; slice guanciale | boil spaghetti; fry guanciale | combine cheese + egg, plate |
+| Amatriciana | spaghetti (pasta dough); slice guanciale; grate pecorino ×1 | fry guanciale, simmer with tomato sauce (pan); boil spaghetti | combine, pecorino on top |
+| Creamy Shrimp Pasta | spaghetti (pasta dough); slice garlic ×1; grate parmesan ×2 | fry garlic + shrimp + cream + 1 grated parmesan (pan); boil spaghetti | combine, 1 grated parmesan on top |
+| Lasagna Bolognese | sheets (pasta dough); grate parmesan ×1 | ragù: minced meat + garlic + tomato sauce (pan); béchamel: milk + flour (pan); assemble with parmesan + olive oil; oven | take out of oven, serve |
+| Trofie with Pesto | pasta dough → pasta machine (fresh trofie); grate parmesan ×1 | boil trofie (1 boil = 2 servings) | pesto sauce, parmesan |
 
 ## Seafood
 | Recipe | Prep | Cook | Plate |
@@ -55,7 +55,8 @@ Shared sub-recipes:
 ## Desserts
 | Recipe | Prep | Plate |
 |---|---|---|
-| Chocolate Panna Cotta | mix cacao + gelatin + cream + sugar | cacao on top |
+| Panna Cotta | mixer: cream + sugar + gelatin + empty glass (from the cupboard) → panna cotta preform | serve the glass (topping unknown) |
+| Chocolate Panna Cotta | mixer: cream + sugar + gelatin + empty glass + 1 cacao charge → chocolate preform | another cacao charge on top |
 | Tiramisu | mix eggs + sugar + mascarpone into mascarpone cream; 1 espresso shot | ladyfingers (savoiardi), coffee, cream, cacao on top |
 
 ## Drinks

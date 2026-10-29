@@ -12,8 +12,7 @@ import {
 } from "@/components/ui/collapsible"
 import { ITEMS, type ItemId } from "@/data/items"
 import { RECIPE_BY_ID } from "@/data/recipes"
-import { usePlanInput } from "@/hooks/use-plan"
-import { leftoverSpares } from "@/lib/planner"
+import { useWaves } from "@/hooks/use-waves"
 import { orderName, usePlanner, type Order } from "@/store"
 
 function OrderLabel({ order }: { order: Order }) {
@@ -133,7 +132,6 @@ function ActiveOrder({ order, current }: { order: Order; current: boolean }) {
 }
 
 function DeliveredOrder({ order }: { order: Order }) {
-  const setDelivered = usePlanner((state) => state.setDelivered)
   const dishes = order.lines.reduce((sum, line) => sum + line.qty, 0)
   return (
     <li className="flex items-center gap-1 rounded-lg px-1.5 py-1 hover:bg-muted">
@@ -143,15 +141,6 @@ function DeliveredOrder({ order }: { order: Order }) {
       <span className="font-sans text-xs text-muted-foreground">
         {dishes} {dishes === 1 ? "dish" : "dishes"}
       </span>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        aria-label={`Move ${orderName(order)} back to active`}
-        title="Back to active"
-        onClick={() => setDelivered(order.id, false)}
-      >
-        <RotateCcw />
-      </Button>
       <DeleteOrderButton order={order} />
     </li>
   )
@@ -190,10 +179,13 @@ export function OrderRail() {
   const currentOrderId = usePlanner((state) => state.currentOrderId)
   const newOrder = usePlanner((state) => state.newOrder)
   const newRound = usePlanner((state) => state.newRound)
-  const planInput = usePlanInput()
+  const {
+    activeOrders: active,
+    delivered: deliveredIds,
+    leftovers,
+  } = useWaves()
 
-  const active = orders.filter((order) => !order.delivered)
-  const delivered = orders.filter((order) => order.delivered)
+  const delivered = orders.filter((order) => deliveredIds.has(order.id))
 
   return (
     <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto border-b p-4 md:border-r md:border-b-0">
@@ -254,7 +246,7 @@ export function OrderRail() {
           title="Start a new round?"
           description="This clears all orders and progress. Batch leftovers, like ground coffee, stay as spares."
           confirmLabel="Start new round"
-          onConfirm={() => newRound(leftoverSpares(planInput))}
+          onConfirm={() => newRound(leftovers())}
         />
       </div>
     </aside>

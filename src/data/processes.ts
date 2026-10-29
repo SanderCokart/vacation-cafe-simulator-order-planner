@@ -53,24 +53,31 @@ export const PROCESSES: Process[] = [
   p("grater", "gratedParmesan", "Parmesan", { parmesan: 1 }),
   p("grater", "gratedPecorino", "Pecorino", { pecorino: 1 }),
   p("mixer", "pizzaDough", "Pizza dough", { freshYeast: 1, flour: 1 }),
-  p("mixer", "spaghettiDough", "Spaghetti dough", { eggs: 1, flour: 1 }),
-  p("mixer", "lasagnaDough", "Lasagna dough", { eggs: 1, flour: 1 }),
-  p("mixer", "trofie", "Trofie", { flour: 1, eggs: 1, milk: 1 }),
+  // One pasta dough feeds the pasta machine for spaghetti, trofie or sheets.
+  p("mixer", "pastaDough", "Pasta dough", { eggs: 2, flour: 1 }),
   p("mixer", "mascarponeCream", "Mascarpone cream", {
     eggs: 1,
     sugar: 1,
     mascarpone: 1,
   }),
-  p("mixer", "chocolatePannaCotta", "Chocolate panna cotta", {
-    cacao: 1,
-    gelatin: 1,
+  p("mixer", "pannaCottaPreform", "Panna cotta preform", {
     cream: 1,
     sugar: 1,
+    gelatin: 1,
+    glass: 1,
+  }),
+  p("mixer", "chocolatePannaCottaPreform", "Chocolate panna cotta preform", {
+    cream: 1,
+    sugar: 1,
+    gelatin: 1,
+    glass: 1,
+    cacao: 1,
   }),
   p("doughTable", "pizzaBase", "Pizza base", { pizzaDough: 1 }),
-  p("pastaMachine", "spaghetti", "Spaghetti", { spaghettiDough: 1 }),
+  p("pastaMachine", "spaghetti", "Spaghetti", { pastaDough: 1 }),
+  p("pastaMachine", "trofie", "Trofie", { pastaDough: 1 }),
   // Lasagna sheet yield is unverified (docs/TODO.md).
-  p("pastaMachine", "lasagnaSheets", "Lasagna sheets", { lasagnaDough: 1 }),
+  p("pastaMachine", "lasagnaSheets", "Lasagna sheets", { pastaDough: 1 }),
   // One grind fills the machine for 6 shots.
   p("grinder", "groundCoffee", "Coffee beans", { coffeeBeans: 1 }, 6),
 

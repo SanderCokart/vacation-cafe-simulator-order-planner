@@ -57,7 +57,7 @@ describe("plan", () => {
     )
     expect(task(result, "cookedSpaghetti")?.runs).toBe(2)
     expect(task(result, "spaghetti")?.runs).toBe(2)
-    expect(gathered(result, "eggs")).toBe(2 + 2) // dough + carbonara egg
+    expect(gathered(result, "eggs")).toBe(2 * 2 + 2) // 2 doughs + carbonara eggs
     // 1 in the shrimp sauce, 1 on top
     expect(task(result, "gratedParmesan")?.runs).toBe(2)
   })
@@ -165,6 +165,28 @@ describe("plan", () => {
     expect(
       task(plan(input({ dishes: { insalataDiMare: 3 } })), "cleanMussels")
     ).toMatchObject({ runs: 2, spare: 3 })
+  })
+
+  it("makes trofie from pasta dough, 2 servings per boil", () => {
+    const result = plan(input({ dishes: { trofiePesto: 3 } }))
+    expect(task(result, "cookedTrofie")?.runs).toBe(2)
+    expect(task(result, "trofie")?.runs).toBe(2)
+    expect(task(result, "pastaDough")?.runs).toBe(2)
+    expect(gathered(result, "eggs")).toBe(4)
+    expect(gathered(result, "flour")).toBe(2)
+    expect(gathered(result, "milk")).toBeUndefined()
+  })
+
+  it("makes panna cotta preforms in a glass at the mixer", () => {
+    const result = plan(
+      input({ dishes: { pannaCotta: 1, chocolatePannaCotta: 2 } })
+    )
+    expect(task(result, "pannaCottaPreform")?.runs).toBe(1)
+    expect(task(result, "chocolatePannaCottaPreform")?.runs).toBe(2)
+    expect(gathered(result, "glass")).toBe(3)
+    expect(gathered(result, "cream")).toBe(3)
+    // 2 charges in the mixer + 2 on top = one 4-charge cacao
+    expect(gathered(result, "cacao")).toBe(1)
   })
 
   it("never puts staples like olive oil on the gather list", () => {

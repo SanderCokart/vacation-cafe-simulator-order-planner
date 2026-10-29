@@ -1,4 +1,10 @@
-import { Check, ChevronRight, RotateCcw } from "lucide-react"
+import {
+  AlertTriangle,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+} from "lucide-react"
 import { useState } from "react"
 import { cn } from "cn"
 
@@ -6,11 +12,12 @@ import { PHASE_ICONS, PHASE_TINTS } from "@/components/phase"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ITEMS, type ItemId } from "@/data/items"
+import { ITEMS, usesOf, type ItemId } from "@/data/items"
 import { RECIPE_BY_ID } from "@/data/recipes"
 import { PHASE_LABELS, PHASES, type Phase } from "@/data/stations"
-import { usePlan } from "@/hooks/use-plan"
-import type { Plan } from "@/lib/planner"
+import { useWaves } from "@/hooks/use-waves"
+import { INVENTORY_SLOTS } from "@/lib/slots"
+import type { Wave } from "@/lib/waves"
 import { orderName, usePlanner, type Order } from "@/store"
 
 interface CardLine {
@@ -43,8 +50,9 @@ const listNames = (amounts: Partial<Record<ItemId, number>>) =>
 /** Hides lines already finished before new orders reopened the card. */
 const openLines = (lines: CardLine[]) => lines.filter((line) => line.qty > 0)
 
-function buildCards(plan: Plan, orders: Order[]): FocusCard[] {
-  const { setCollected, setDone, setDelivered } = usePlanner.getState()
+function buildCards(wave: Wave, orders: Order[]): FocusCard[] {
+  const { updateWave } = usePlanner.getState()
+  const { plan } = wave
   const cards: FocusCard[] = []
 
   if (plan.gather.length) {
@@ -53,23 +61,35 @@ function buildCards(plan: Plan, orders: Order[]): FocusCard[] {
       phase: "gather",
       title: "Pantry pickup",
       lines: openLines(
-        plan.gather.map((line) => ({
-          key: line.item,
-          qty: plan.gatherComplete ? line.need : line.remaining,
-          name: ITEMS[line.item].name,
-          done: line.collected,
-        }))
+        plan.gather.map((line) => {
+          const uses = usesOf(line.item)
+          const details = [
+            uses > 1 && `${uses} uses each`,
+            line.spare > 0 && uses > 1 && `${line.spare} spare`,
+          ].filter(Boolean)
+          return {
+            key: line.item,
+            qty: plan.gatherComplete ? line.need : line.remaining,
+            name: ITEMS[line.item].name,
+            detail: details.join(" · ") || undefined,
+            done: line.collected,
+          }
+        })
       ),
       complete: plan.gatherComplete,
       doneLabel: "Collected",
       onDone: () =>
-        setCollected(
-          Object.fromEntries(plan.gather.map((line) => [line.item, line.need]))
-        ),
+        updateWave(wave, {
+          collected: Object.fromEntries(
+            plan.gather.map((line) => [line.item, line.need])
+          ),
+        }),
       onReopen: () =>
-        setCollected(
-          Object.fromEntries(plan.gather.map((line) => [line.item, 0]))
-        ),
+        updateWave(wave, {
+          collected: Object.fromEntries(
+            plan.gather.map((line) => [line.item, 0])
+          ),
+        }),
     })
   }
 
@@ -98,38 +118,47 @@ function buildCards(plan: Plan, orders: Order[]): FocusCard[] {
       complete: card.complete,
       doneLabel: "Done",
       onDone: () =>
-        setDone(
-          Object.fromEntries(
+        updateWave(wave, {
+          done: Object.fromEntries(
             card.tasks.map((task) => [task.process.id, task.runs])
-          )
-        ),
+          ),
+        }),
       onReopen: () =>
-        setDone(
-          Object.fromEntries(card.tasks.map((task) => [task.process.id, 0]))
-        ),
+        updateWave(wave, {
+          done: Object.fromEntries(
+            card.tasks.map((task) => [task.process.id, 0])
+          ),
+        }),
     })
   }
 
-  for (const order of orders) {
-    if (order.delivered || !order.lines.length) continue
-    cards.push({
-      id: `order:${order.id}`,
-      phase: "plate",
-      title: orderName(order),
-      lines: order.lines.map((line) => {
-        const recipe = RECIPE_BY_ID[line.recipeId]
-        return {
-          key: line.recipeId,
-          qty: line.qty,
-          name: recipe?.name,
-          detail: recipe?.serve,
-        }
-      }),
-      complete: false,
-      doneLabel: "Delivered",
-      onDone: () => setDelivered(order.id, true),
-    })
-  }
+  const orderById = new Map(orders.map((order) => [order.id, order]))
+  const plated = [...wave.dishes].sort(
+    (a, b) =>
+      (orderById.get(a.orderId)?.number ?? 0) -
+      (orderById.get(b.orderId)?.number ?? 0)
+  )
+  cards.push({
+    id: "serve",
+    phase: "plate",
+    title: "Plate and serve",
+    lines: plated.map((dish) => {
+      const recipe = RECIPE_BY_ID[dish.recipeId]
+      const order = orderById.get(dish.orderId)
+      return {
+        key: `${dish.orderId}:${dish.recipeId}`,
+        qty: dish.qty,
+        name: recipe?.name,
+        detail: [order && `For ${orderName(order)}`, recipe?.serve]
+          .filter(Boolean)
+          .join(" · "),
+      }
+    }),
+    complete: wave.served,
+    doneLabel: "Served",
+    onDone: () => updateWave(wave, { served: true }),
+    onReopen: () => updateWave(wave, { served: false }),
+  })
 
   return cards
 }
@@ -208,14 +237,83 @@ function EmptyState() {
   )
 }
 
+function WaveStepper({
+  waves,
+  index,
+  onChange,
+}: {
+  waves: Wave[]
+  index: number
+  onChange: (index: number) => void
+}) {
+  const wave = waves[index]
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        variant="outline"
+        size="icon-sm"
+        aria-label="Previous wave"
+        disabled={index === 0}
+        onClick={() => onChange(index - 1)}
+      >
+        <ChevronLeft />
+      </Button>
+      <h2 className="min-w-28 text-center text-lg font-medium">
+        Wave {index + 1}{" "}
+        <span className="text-muted-foreground">of {waves.length}</span>
+      </h2>
+      <Button
+        variant="outline"
+        size="icon-sm"
+        aria-label="Next wave"
+        disabled={index === waves.length - 1}
+        onClick={() => onChange(index + 1)}
+      >
+        <ChevronRight />
+      </Button>
+      <span
+        className={cn(
+          "rounded-full px-2.5 py-0.5 font-sans text-xs tabular-nums",
+          wave.overfull
+            ? "bg-destructive/10 text-destructive"
+            : "bg-muted text-muted-foreground"
+        )}
+        title="The most inventory slots this wave needs at once"
+      >
+        {wave.overfull && <AlertTriangle className="mr-1 inline size-3" />}
+        Up to {wave.peak} of {INVENTORY_SLOTS} slots
+      </span>
+      {wave.served && (
+        <span className="inline-flex items-center gap-1 font-sans text-xs text-primary">
+          <Check className="size-3.5" /> Served
+        </span>
+      )}
+    </div>
+  )
+}
+
 export function FocusView() {
-  const plan = usePlan()
+  const { waves } = useWaves()
   const orders = usePlanner((state) => state.orders)
-  const cards = buildCards(plan, orders)
+  const [chosenWave, setChosenWave] = useState<number | null>(null)
   const [chosenPhase, setChosenPhase] = useState<Phase | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
 
-  if (!cards.length) return <EmptyState />
+  if (!waves.length) return <EmptyState />
+
+  const firstOpenWave = Math.max(
+    0,
+    waves.findIndex((wave) => !wave.served)
+  )
+  const waveIndex = Math.min(chosenWave ?? firstOpenWave, waves.length - 1)
+  const wave = waves[waveIndex]
+  const cards = buildCards(wave, orders)
+
+  const goToWave = (index: number) => {
+    setChosenWave(index)
+    setChosenPhase(null)
+    setFocusedId(null)
+  }
 
   const open = (phase: Phase) =>
     cards.filter((card) => card.phase === phase && !card.complete)
@@ -230,9 +328,20 @@ export function FocusView() {
   const nextPhase = PHASES.slice(PHASES.indexOf(phase) + 1).find(
     (p) => open(p).length
   )
+  const nextWave = waves.findIndex(
+    (candidate, index) => index > waveIndex && !candidate.served
+  )
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 p-4 md:p-6">
+      <WaveStepper waves={waves} index={waveIndex} onChange={goToWave} />
+      {wave.overfull && (
+        <p className="font-sans text-sm text-destructive">
+          One dish in this wave needs more than {INVENTORY_SLOTS} slots on its
+          own. You'll need to drop something on a counter.
+        </p>
+      )}
+
       <Tabs
         value={phase}
         onValueChange={(value) => {
@@ -287,7 +396,7 @@ export function FocusView() {
               <p className="font-sans text-sm text-muted-foreground">
                 {nextPhase
                   ? `Last ${PHASE_LABELS[phase].toLowerCase()} card.`
-                  : "Last card of the round."}
+                  : "Last card of this wave."}
               </p>
             )}
             {upNext.map((card) => (
@@ -309,8 +418,12 @@ export function FocusView() {
       ) : (
         <section className="flex flex-col items-center gap-3 rounded-3xl border border-dashed p-10 text-center">
           <Check className="size-8 text-primary" />
-          <h2 className="text-xl font-medium">{PHASE_LABELS[phase]} is done</h2>
-          {nextPhase && (
+          <h2 className="text-xl font-medium">
+            {nextPhase || !wave.served
+              ? `${PHASE_LABELS[phase]} is done`
+              : `Wave ${waveIndex + 1} is served`}
+          </h2>
+          {nextPhase ? (
             <Button
               onClick={() => {
                 setChosenPhase(nextPhase)
@@ -319,6 +432,12 @@ export function FocusView() {
             >
               On to {PHASE_LABELS[nextPhase].toLowerCase()} <ChevronRight />
             </Button>
+          ) : (
+            nextWave !== -1 && (
+              <Button onClick={() => goToWave(nextWave)}>
+                On to wave {nextWave + 1} <ChevronRight />
+              </Button>
+            )
           )}
         </section>
       )}

@@ -5,7 +5,8 @@ import { cn } from "cn"
 import { Kbd } from "@/components/ui/kbd"
 import { RECIPE_BY_ID } from "@/data/recipes"
 import { searchRecipes } from "@/lib/search"
-import { activeOrders, orderName, usePlanner } from "@/store"
+import { useWaves } from "@/hooks/use-waves"
+import { orderName, usePlanner } from "@/store"
 
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
@@ -20,13 +21,12 @@ export function RecipeSearch() {
   const [open, setOpen] = useState(false)
   const [lastAdded, setLastAdded] = useState<string | null>(null)
 
-  const orders = usePlanner((state) => state.orders)
   const currentOrderId = usePlanner((state) => state.currentOrderId)
   const { addDish, removeDish, newOrder, stepOrder, selectOrder } =
     usePlanner.getState()
 
   const results = useMemo(() => searchRecipes(query), [query])
-  const active = activeOrders(orders)
+  const { activeOrders: active } = useWaves()
   const current = active.find((order) => order.id === currentOrderId)
 
   useEffect(() => {
@@ -55,6 +55,8 @@ export function RecipeSearch() {
   }
 
   const add = (recipeId: string) => {
+    // A fully served order is done; new dishes start a new order.
+    if (currentOrderId && !current) selectOrder(null)
     addDish(recipeId)
     setLastAdded(recipeId)
   }
@@ -65,7 +67,10 @@ export function RecipeSearch() {
       (event.key === "ArrowUp" || event.key === "ArrowDown")
     ) {
       event.preventDefault()
-      stepOrder(event.key === "ArrowUp" ? -1 : 1)
+      stepOrder(
+        event.key === "ArrowUp" ? -1 : 1,
+        active.map((order) => order.id)
+      )
       setLastAdded(null)
       return
     }

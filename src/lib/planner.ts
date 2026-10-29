@@ -1,16 +1,22 @@
-import { ITEMS, type Amounts, type Item, type ItemId } from "@/data/items"
+import {
+  ITEMS,
+  usesOf,
+  type Amounts,
+  type Item,
+  type ItemId,
+} from "@/data/items"
 import { PROCESSES, type Process } from "@/data/processes"
 import { RECIPE_BY_ID } from "@/data/recipes"
 import { STATIONS, type Station } from "@/data/stations"
 
 export interface PlanInput {
-  /** Dish counts for every order in the round, delivered ones included. */
+  /** Dish counts to plan for. */
   dishes: Record<string, number>
   /** Completed runs per process id. */
   done: Record<string, number>
-  /** Collected amount per raw ingredient. */
+  /** Collected items or containers per raw ingredient. */
   collected: Amounts
-  /** Spares carried over from earlier rounds. */
+  /** Spares already in the kitchen from earlier waves or rounds. */
   spares: Amounts
 }
 
@@ -31,9 +37,12 @@ export interface StationCard {
 
 export interface GatherLine {
   item: ItemId
+  /** Items or containers to pick up, e.g. 2 milk cartons. */
   need: number
   collected: number
   remaining: number
+  /** Uses left over in the last container, e.g. 3 spare milk pours. */
+  spare: number
 }
 
 export interface Plan {
@@ -135,11 +144,20 @@ export function plan({ dishes, done, collected, spares }: PlanInput): Plan {
   })
 
   const gather: GatherLine[] = (Object.entries(demand) as [ItemId, number][])
-    .filter(([item, need]) => isRaw(item) && !isStaple(item) && need > 0)
-    .map(([item, need]) => {
+    .filter(([item, uses]) => isRaw(item) && !isStaple(item) && uses > 0)
+    .map(([item, uses]) => {
+      const carried = spares[item] ?? 0
+      const need = Math.ceil(Math.max(0, uses - carried) / usesOf(item))
       const got = Math.min(collected[item] ?? 0, need)
-      return { item, need, collected: got, remaining: need - got }
+      return {
+        item,
+        need,
+        collected: got,
+        remaining: need - got,
+        spare: carried + need * usesOf(item) - uses,
+      }
     })
+    .filter((line) => line.need > 0)
     .sort((a, b) => ITEMS[a.item].name.localeCompare(ITEMS[b.item].name))
 
   return {
@@ -152,21 +170,37 @@ export function plan({ dishes, done, collected, spares }: PlanInput): Plan {
 }
 
 /**
- * Spares to carry into the next round: batch leftovers from the runs actually
- * done, plus carried spares this round didn't use.
+ * Spares left in the kitchen afterwards: batch and container leftovers plus
+ * carried spares that weren't used. With `projected`, assumes every planned
+ * run and pickup happens; otherwise counts only what was actually done.
  */
-export function leftoverSpares(input: PlanInput): Amounts {
-  const { demand, tasks } = plan(input)
-  const runsDone = new Map(
-    tasks.map((task) => [task.process.output, task.done])
-  )
-  const leftover: Amounts = {}
+export function leftoverSpares(input: PlanInput, projected = false): Amounts {
+  const { demand, tasks, gather } = plan(input)
+  const made = new Map<ItemId, number>()
+  for (const task of tasks) {
+    const runs = projected ? task.runs : task.done
+    made.set(task.process.output, runs * task.process.yield)
+  }
+  for (const line of gather) {
+    made.set(
+      line.item,
+      (projected ? line.need : line.collected) * usesOf(line.item)
+    )
+  }
+
+  const tracked = new Set<ItemId>(Object.keys(input.spares) as ItemId[])
   for (const process of PROCESSES) {
-    const carried = input.spares[process.output] ?? 0
-    if (process.yield === 1 && carried === 0) continue
-    const made = (runsDone.get(process.output) ?? 0) * process.yield
-    const left = carried + made - (demand[process.output] ?? 0)
-    if (left > 0) leftover[process.output] = left
+    if (process.yield > 1) tracked.add(process.output)
+  }
+  for (const item of Object.keys(ITEMS) as ItemId[]) {
+    if (usesOf(item) > 1) tracked.add(item)
+  }
+
+  const leftover: Amounts = {}
+  for (const item of tracked) {
+    const left =
+      (input.spares[item] ?? 0) + (made.get(item) ?? 0) - (demand[item] ?? 0)
+    if (left > 0) leftover[item] = left
   }
   return leftover
 }

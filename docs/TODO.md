@@ -7,7 +7,6 @@
 - [ ] Pasta ai Frutti di Mare (known: canned tomato sauce cooked on stove)
 - [ ] Mussels in Tomato Sauce (known: mussels, cleaning mini-game)
 - [ ] Arugula Salad
-- [ ] Panna Cotta, plain (unconfirmed: cream, sugar, gelatin, berry sauce)
 - [ ] Croissants: plain, jam, cream, chocolate (batches of 9, piping bag fillings, 3 per oven at max level)
 
 ## Unverified details
@@ -17,7 +16,7 @@
 - [ ] All `?` markers in docs/recipes.md
 - [ ] Assumed quantities in src/data (all 1 unless you said otherwise): oysters per plate, Caprese, Cheese Platter, Antipasto Misto, Carbonara/Amatriciana guanciale and pecorino, sea bass lemon and thyme
 - [ ] Tomato sauce and pesto are counted once per dish on the gather list. Are they jars with several uses? (Olive oil is unlimited and never gathered.)
-- [ ] Trofie: does it go through the pasta machine, or straight from the mixer to the pot?
+- [ ] Plain Panna Cotta: is anything added at plating? (Currently served as is.)
 - [ ] Lasagna sheets: how many lasagnas does 1 sheet batch make? (currently 1)
 - [ ] Marocchino: assumed 1 cacao in the cup and 1 on top
 

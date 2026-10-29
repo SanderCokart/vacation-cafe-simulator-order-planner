@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
 import type { Amounts } from "@/data/items"
+import type { StartedWave, Wave } from "@/lib/waves"
 
 export interface OrderLine {
   recipeId: string
@@ -14,29 +15,32 @@ export interface Order {
   /** Optional table number or name that replaces "Order N". */
   label?: string
   lines: OrderLine[]
-  delivered: boolean
 }
 
 interface State {
   orders: Order[]
   currentOrderId: string | null
   nextNumber: number
-  done: Record<string, number>
-  collected: Amounts
+  /** Waves that have started, in the order they were started. */
+  waves: StartedWave[]
   spares: Amounts
 }
+
+export type WavePatch = Partial<
+  Pick<StartedWave, "done" | "collected" | "served">
+>
 
 interface Actions {
   addDish: (recipeId: string) => void
   removeDish: (orderId: string, recipeId: string) => void
   newOrder: () => void
-  selectOrder: (orderId: string) => void
-  stepOrder: (delta: 1 | -1) => void
+  selectOrder: (orderId: string | null) => void
+  /** Moves through `orderIds` (the active orders) from the current one. */
+  stepOrder: (delta: 1 | -1, orderIds: string[]) => void
   renameOrder: (orderId: string, label: string) => void
-  setDelivered: (orderId: string, delivered: boolean) => void
   deleteOrder: (orderId: string) => void
-  setDone: (runs: Record<string, number>) => void
-  setCollected: (amounts: Amounts) => void
+  /** Records progress on a wave, starting it first if needed. */
+  updateWave: (wave: Wave, patch: WavePatch) => void
   newRound: (spares: Amounts) => void
   clearSpares: () => void
 }
@@ -45,22 +49,16 @@ const emptyRound = {
   orders: [],
   currentOrderId: null,
   nextNumber: 1,
-  done: {},
-  collected: {},
+  waves: [],
 }
 
 export const orderName = (order: Order) =>
   order.label || `Order ${order.number}`
 
-/** Orders the search field can step through: active ones, in number order. */
-export const activeOrders = (orders: Order[]) =>
-  orders.filter((order) => !order.delivered)
-
 const createOrder = (number: number): Order => ({
   id: crypto.randomUUID(),
   number,
   lines: [],
-  delivered: false,
 })
 
 export const usePlanner = create<State & Actions>()(
@@ -73,7 +71,7 @@ export const usePlanner = create<State & Actions>()(
         set((state) => {
           let orders = state.orders
           let current = orders.find(
-            (order) => order.id === state.currentOrderId && !order.delivered
+            (order) => order.id === state.currentOrderId
           )
           let nextNumber = state.nextNumber
           if (!current) {
@@ -122,8 +120,7 @@ export const usePlanner = create<State & Actions>()(
             (order) => order.id === state.currentOrderId
           )
           // Don't stack up empty orders when Shift+Enter is pressed twice.
-          if (current && !current.delivered && current.lines.length === 0)
-            return {}
+          if (current && current.lines.length === 0) return {}
           const order = createOrder(state.nextNumber)
           return {
             orders: [...state.orders, order],
@@ -134,18 +131,16 @@ export const usePlanner = create<State & Actions>()(
 
       selectOrder: (orderId) => set({ currentOrderId: orderId }),
 
-      stepOrder: (delta) => {
-        const { orders, currentOrderId } = get()
-        const active = activeOrders(orders)
-        if (!active.length) return
-        const index = active.findIndex((order) => order.id === currentOrderId)
+      stepOrder: (delta, orderIds) => {
+        if (!orderIds.length) return
+        const index = orderIds.indexOf(get().currentOrderId ?? "")
         const next =
           index === -1
             ? delta === 1
               ? 0
-              : active.length - 1
-            : Math.min(active.length - 1, Math.max(0, index + delta))
-        set({ currentOrderId: active[next].id })
+              : orderIds.length - 1
+            : Math.min(orderIds.length - 1, Math.max(0, index + delta))
+        set({ currentOrderId: orderIds[next] })
       },
 
       renameOrder: (orderId, label) =>
@@ -157,44 +152,64 @@ export const usePlanner = create<State & Actions>()(
           ),
         })),
 
-      setDelivered: (orderId, delivered) =>
-        set((state) => ({
-          orders: state.orders.map((order) =>
-            order.id === orderId ? { ...order, delivered } : order
-          ),
-          currentOrderId:
-            delivered && state.currentOrderId === orderId
-              ? null
-              : state.currentOrderId,
-        })),
-
       deleteOrder: (orderId) =>
         set((state) => ({
           orders: state.orders.filter((order) => order.id !== orderId),
+          waves: state.waves.map((wave) => ({
+            ...wave,
+            dishes: wave.dishes.filter((dish) => dish.orderId !== orderId),
+          })),
           currentOrderId:
             state.currentOrderId === orderId ? null : state.currentOrderId,
         })),
 
-      setDone: (runs) => set((state) => ({ done: { ...state.done, ...runs } })),
-
-      setCollected: (amounts) =>
-        set((state) => ({ collected: { ...state.collected, ...amounts } })),
+      updateWave: (wave, patch) =>
+        set((state) => {
+          const existing = wave.id
+            ? state.waves.find((entry) => entry.id === wave.id)
+            : undefined
+          const base: StartedWave = existing ?? {
+            id: crypto.randomUUID(),
+            dishes: wave.dishes,
+            done: {},
+            collected: {},
+            served: false,
+          }
+          const updated: StartedWave = {
+            ...base,
+            done: { ...base.done, ...patch.done },
+            collected: { ...base.collected, ...patch.collected },
+            served: patch.served ?? base.served,
+          }
+          return {
+            waves: existing
+              ? state.waves.map((entry) =>
+                  entry === existing ? updated : entry
+                )
+              : [...state.waves, updated],
+          }
+        }),
 
       newRound: (spares) => set({ ...emptyRound, spares }),
 
       clearSpares: () => set({ spares: {} }),
     }),
-    { name: "vacation-cafe-planner", version: 1 }
+    {
+      name: "vacation-cafe-planner",
+      version: 2,
+      // Version 1 tracked progress for the whole round; waves start fresh.
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<State>
+        if (version < 2) return { ...state, waves: [] }
+        return state
+      },
+      partialize: ({ orders, currentOrderId, nextNumber, waves, spares }) => ({
+        orders,
+        currentOrderId,
+        nextNumber,
+        waves,
+        spares,
+      }),
+    }
   )
 )
-
-/** Dish totals across every order in the round, delivered ones included. */
-export function roundDishes(orders: Order[]): Record<string, number> {
-  const dishes: Record<string, number> = {}
-  for (const order of orders) {
-    for (const line of order.lines) {
-      dishes[line.recipeId] = (dishes[line.recipeId] ?? 0) + line.qty
-    }
-  }
-  return dishes
-}

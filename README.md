@@ -23,6 +23,12 @@ Other scripts: `pnpm test` (Vitest), `pnpm build`, `pnpm lint`.
 | `Ctrl Backspace` | Remove one of the last added dish |
 | `Esc` | Close the search |
 
+- **Waves.** The game only has 10 inventory slots, so the planner splits the round into waves that each fit in your hands:
+  - Ingredients stack to 10. Milk and cacao take 1 slot per container.
+  - Every filled cup or finished dish takes its own slot, plus 1 slot each for the plates and glasses.
+  - 1 slot is kept free for the basic cutting table.
+  - Dishes that share a batch (pasta pots, ciabatta, coffee grinds, seafood) stay together, and leftovers carry over to the next wave.
+  - Once a wave has started, it never changes.
 - Click an order's name to give it a table number.
 - Prep and cook work is combined across all orders, one card per station.
 - Adding orders mid-round reopens only the difference.
@@ -32,7 +38,9 @@ Other scripts: `pnpm test` (Vitest), `pnpm build`, `pnpm lint`.
 ## Where things live
 
 - `src/data/`: recipe data. `items.ts` lists ingredients, `processes.ts` lists station actions and their yields, `recipes.ts` lists dishes and what plating uses.
-- `src/lib/planner.ts`: the calculation, with tests in `planner.test.ts`.
+- `src/lib/planner.ts`: the calculation for one set of dishes.
+- `src/lib/slots.ts` and `src/lib/waves.ts`: inventory slot counting and splitting into waves.
+- Tests sit next to each file in `src/lib/`.
 - `docs/`: [design decisions](docs/decisions.md), [recipe source data](docs/recipes.md), [TODO](docs/TODO.md).
 
 ## Adding a recipe

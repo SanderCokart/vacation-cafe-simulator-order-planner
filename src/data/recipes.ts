@@ -30,6 +30,8 @@ export interface Recipe {
   /** The plating instruction shown on the order card. */
   serve: string
   aliases?: string[]
+  /** False when the dish already sits in its own glass from an earlier step. */
+  vessel?: false
 }
 
 // Source data and open questions: docs/recipes.md and docs/TODO.md.
@@ -200,11 +202,20 @@ export const RECIPES: Recipe[] = [
     serve: "Arrange meats, cheeses, artichoke and olives",
   },
   {
+    id: "pannaCotta",
+    name: "Panna Cotta",
+    category: "Dessert",
+    plate: { pannaCottaPreform: 1 },
+    serve: "Serve the glass",
+    vessel: false,
+  },
+  {
     id: "chocolatePannaCotta",
     name: "Chocolate Panna Cotta",
     category: "Dessert",
-    plate: { chocolatePannaCotta: 1, cacao: 1 },
-    serve: "Cacao on top",
+    plate: { chocolatePannaCottaPreform: 1, cacao: 1 },
+    serve: "Another layer of cacao on top, serve the glass",
+    vessel: false,
   },
   {
     id: "tiramisu",
@@ -259,6 +270,18 @@ export const RECIPES: Recipe[] = [
     aliases: ["wine"],
   })),
 ]
+
+/** What a dish is served in, picked up from the cupboard. */
+export type Vessel = "plate" | "glass" | "cup"
+
+export const vesselFor = (recipe: Recipe): Vessel | null =>
+  recipe.vessel === false
+    ? null
+    : recipe.category === "Coffee"
+      ? "cup"
+      : recipe.category === "Wine"
+        ? "glass"
+        : "plate"
 
 export const RECIPE_BY_ID = Object.fromEntries(
   RECIPES.map((recipe) => [recipe.id, recipe])

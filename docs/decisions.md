@@ -71,18 +71,18 @@ Settled with the user during design grilling. Newest round last.
 - **Olive oil.** It's unlimited and always on hand, so it's added at plating but never shown on the gather list. Items like this are marked `staple: true` in `src/data/items.ts`.
 - **Backspace.** This replaces round 1, decision 4. Backspace only clears the field. `Ctrl+Backspace` takes one off the last added dish in the current order (plain Backspace removed dishes by accident).
 
-## Inventory limit (grilling in progress)
+## Inventory limit (built in v2)
 Facts so far:
 - **Slots.** The inventory has 10 slots. It's fixed and can't be upgraded (it's bound to the number keys). A web search found no upgrade.
 - **Stacks.** Most ingredients stack up to 10 per slot. Plates stack to 20.
-- **Multi-use containers.** Milk (6 uses) and cacao (8 uses) take 1 slot each and don't stack, so 16 cacao uses = 2 slots.
+- **Multi-use containers.** Milk (6 uses) and cacao take 1 slot each and don't stack. A cacao container has 4 charges (confirmed).
 - **Prepped items take slots.** Cutting a tomato gives a cut tomato back into the inventory.
 - **Counters.** Items can be put down on counters, but each one has to be dropped separately (10 mozzarellas = 10 drops), so counter use should be kept to a minimum.
 - **Plates.** Plating needs a plate in the inventory, which takes a slot.
 - **Preferred approach (from you).** Work in gather batches: gather a set, prep it, set it aside, then gather the next set.
 - **Waves (decided).** The round is split into waves. Each wave's whole chain (gather → prep → cook → plate) fits in 10 slots, so items rarely need to be dropped. Within a wave, work is combined across dishes and can use several stations (for example, cutting and mixing in the same wave).
 - **Prepped items stack to 10.** The upgraded cutter cuts a whole stack 1-to-1, in the same slot. The basic cutting table splits it into 2 stacks (still-uncut items plus cut items), so plan conservatively for the cutting table.
-- **Single-use items.** Flour, sugar, tomato sauce, pesto sauce, cream, gelatin, mascarpone, black olives and coffee beans are single use. Coffee beans give 6 uses once ground. Milk (6) and cacao (8) are the only multi-use containers.
+- **Single-use items.** Flour, sugar, tomato sauce, pesto sauce, cream, gelatin, mascarpone, black olives and coffee beans are single use. Coffee beans give 6 uses once ground. Milk (6) and cacao (4 charges) are the only multi-use containers.
 - **Container leftovers.** Leftover uses in a container (for example, 4 milk uses) are kept as spares.
 - **Finished dishes.** A plated dish stays in the inventory, 1 per slot, until it's served. So 10 dishes is the most you can carry, and fewer if you're also carrying plates.
 - **Gather trips.** Gather becomes trip cards ("Trip 1 of 3"), each at most 10 slots, each with its own "Collected" button.
@@ -101,3 +101,4 @@ Facts so far:
 - **Wave splitting.** A fast rule of thumb, not an exhaustive search. It updates instantly as you type.
 - **Plating cards.** A wave's Plate card groups dishes by order. An order counts as delivered once all its dishes are served, even across waves.
 - **Waves are self-contained.** No storage carries over between waves; only true leftovers do, dropped on a counter.
+- **Coffee cups.** Coffee needs a cup from the cupboard. Empty cups are assumed to stack 10 per slot, like glasses. A filled cup takes 1 slot and doesn't stack.
