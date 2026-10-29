@@ -1,5 +1,5 @@
 {
-  "name": "vcs-app",
+  "name": "vacation-cafe-simulator-order-planner",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -9,12 +9,14 @@
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@fontsource-variable/roboto-slab": "^5.3.0",
     "@tailwindcss/vite": "^4",
+    "@wrksz/themes": "^2.1.1",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
     "lucide-react": "^1.64.0",
@@ -22,7 +24,8 @@
     "react-dom": "^19.3.1",
     "shadcn": "^4.23.0",
     "tailwindcss": "^4",
-    "tw-animate-css": "^1.4.0"
+    "tw-animate-css": "^1.4.0",
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@eslint/js": "^10",
@@ -38,6 +41,7 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8",
-    "vite": "^8"
+    "vite": "^8",
+    "vitest": "^5.0.5"
   }
 }
